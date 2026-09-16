@@ -32,4 +32,12 @@ export class NormalizationController {
   ) {
     return this.normalizationService.getDictionaries(system, query);
   }
+
+  @Get('normalization/ai-search')
+  async aiSearch(
+    @Query('q') query: string,
+    @Query('system') system?: string,
+  ) {
+    return this.normalizationService.aiSearchTerminology(query, system);
+  }
 }

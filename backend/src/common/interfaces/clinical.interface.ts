@@ -106,3 +106,32 @@ export interface ClinicalDecisionPayload {
   doctorName: string;
   timestamp: string;
 }
+
+export interface UserAccount {
+  id: string;
+  email: string;
+  passwordHash: string;
+  role: 'doctor' | 'patient';
+  fullName: string;
+  phone?: string;
+  patientId?: string;
+  isIntakeCompleted: boolean;
+  specialization?: string;
+  hospitalId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UserSession {
+  id: string;
+  email: string;
+  role: 'doctor' | 'patient';
+  fullName: string;
+  phone?: string;
+  patientId?: string;
+  isIntakeCompleted: boolean;
+  specialization?: string;
+  hospitalId?: string;
+  token?: string;
+}
+

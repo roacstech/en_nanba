@@ -72,20 +72,20 @@ export const AiReasoningConsole: React.FC<AiReasoningConsoleProps> = ({
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-teal-50 dark:bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-500/30">
+          <div className="p-2 rounded-2xl bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
             <Cpu className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
+              <h2 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
                 AI Orchestration & Clinical Reasoning
               </h2>
-              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-teal-50 dark:bg-teal-500/20 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-500/30">
-                Gemini 3.8 Flash + LangChain.js
+              <span className="text-[10px] uppercase font-extrabold tracking-wider px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
+                Gemini 3.6 Flash + LangChain
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              RAG-grounded synthesis with PHI masking & strict Zod response schema validation
+              Live generative clinical reasoning with PHI masking, RAG grounding & strict Zod response validation
             </p>
           </div>
         </div>
@@ -94,12 +94,12 @@ export const AiReasoningConsole: React.FC<AiReasoningConsoleProps> = ({
         <button
           onClick={handleRunAiReasoning}
           disabled={isGenerating}
-          className="px-4 py-2 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 disabled:opacity-50 text-white dark:text-slate-950 font-bold text-xs flex items-center gap-2 shadow-md shadow-teal-500/20 transition-all cursor-pointer"
+          className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-blue-500/20 transition-all cursor-pointer"
         >
           {isGenerating ? (
             <>
               <RefreshCw className="w-4 h-4 animate-spin" />
-              Running RAG & Gemini API...
+              Running Gemini 3.6 Flash...
             </>
           ) : (
             <>
@@ -110,20 +110,64 @@ export const AiReasoningConsole: React.FC<AiReasoningConsoleProps> = ({
         </button>
       </div>
 
+      {/* Interactive 5-Stage Clinical Intelligence Flow */}
+      <div className="mt-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2.5">
+        <div className="flex items-center justify-between">
+          <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+            <Cpu className="w-3.5 h-3.5 text-blue-600" /> End-to-End Clinical Intelligence Pipeline Flow
+          </div>
+          <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+            Live Engine Active
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 text-xs">
+          <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-900/60 shadow-xs">
+            <span className="text-[10px] font-extrabold text-blue-600 block">STEP 1</span>
+            <div className="font-extrabold text-slate-900 dark:text-white text-xs">De-Identification</div>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">HIPAA Zero-PHI Masking</p>
+          </div>
+
+          <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-900/60 shadow-xs">
+            <span className="text-[10px] font-extrabold text-blue-600 block">STEP 2</span>
+            <div className="font-extrabold text-slate-900 dark:text-white text-xs">Ontology Grounding</div>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">ICD-11, RxNorm, LOINC, UCUM</p>
+          </div>
+
+          <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-900/60 shadow-xs">
+            <span className="text-[10px] font-extrabold text-blue-600 block">STEP 3</span>
+            <div className="font-extrabold text-slate-900 dark:text-white text-xs">Graph & Radar</div>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Neo4j Cypher Safety Rules</p>
+          </div>
+
+          <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-900/60 shadow-xs">
+            <span className="text-[10px] font-extrabold text-blue-600 block">STEP 4</span>
+            <div className="font-extrabold text-slate-900 dark:text-white text-xs">Gemini 3.6 Synthesis</div>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">RAG Differential Diagnosis</p>
+          </div>
+
+          <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-900/60 shadow-xs">
+            <span className="text-[10px] font-extrabold text-blue-600 block">STEP 5</span>
+            <div className="font-extrabold text-slate-900 dark:text-white text-xs">Zod & Ledger</div>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Schema Verified & Inscribed</p>
+          </div>
+        </div>
+      </div>
+
       {/* Execution Pipeline Badges */}
       {pipelineMetrics && (
         <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] bg-slate-50 dark:bg-slate-950 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
-          <span className="text-slate-600 dark:text-slate-400 font-semibold">Pipeline Verification:</span>
-          <span className="px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50">
+          <span className="text-slate-600 dark:text-slate-400 font-bold">Pipeline Verification:</span>
+          <span className="px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50 font-bold">
             ✓ Zod Schema Validated
           </span>
-          <span className="px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/70 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/50">
+          <span className="px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/70 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50 font-bold">
             {pipelineMetrics.phiScrubbedTokensCount} PHI Tokens Masked
           </span>
-          <span className="px-2 py-0.5 rounded bg-cyan-50 dark:bg-cyan-950/70 text-cyan-800 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800/50">
+          <span className="px-2 py-0.5 rounded bg-cyan-50 dark:bg-cyan-950/70 text-cyan-800 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800/50 font-bold">
             {pipelineMetrics.ragContextItemsCount} Qdrant Guideline Citations
           </span>
-          <span className="px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50">
+          <span className="px-2 py-0.5 rounded bg-purple-50 dark:bg-purple-950/70 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800/50 font-bold">
             {pipelineMetrics.graphNodesAnalyzed} Neo4j Nodes Evaluated
           </span>
         </div>
@@ -369,7 +413,7 @@ export const AiReasoningConsole: React.FC<AiReasoningConsoleProps> = ({
                   <button
                     onClick={handleRecordDecision}
                     disabled={isSubmittingDecision}
-                    className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white dark:bg-teal-500 dark:hover:bg-teal-400 dark:text-slate-950 font-bold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer"
+                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-blue-500/20 transition-all cursor-pointer"
                   >
                     {isSubmittingDecision ? (
                       <>

@@ -15,14 +15,22 @@ export const PatientBanner: React.FC<PatientBannerProps> = ({
   selectedPatient,
   onSelectPatient,
 }) => {
-  if (!selectedPatient) return null;
+  if (!selectedPatient) {
+    return (
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 text-center text-slate-500 dark:text-slate-400">
+        <User className="w-8 h-8 mx-auto mb-2 text-slate-400 opacity-60" />
+        <p className="font-semibold text-sm">No Patients Registered in Database</p>
+        <p className="text-xs mt-1 text-slate-400">Newly registered patients will automatically appear here once they complete their intake form.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm dark:shadow-xl mb-6 transition-colors">
       {/* Top Patient Switcher Bar */}
       <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-600 dark:text-teal-400 font-bold text-lg">
+          <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-200 dark:bg-blue-950/40 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-lg">
             {selectedPatient.fullName.slice(0, 2).toUpperCase()}
           </div>
           <div>
@@ -31,7 +39,7 @@ export const PatientBanner: React.FC<PatientBannerProps> = ({
               <span className="px-2 py-0.5 text-xs rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono border border-slate-200 dark:border-slate-700">
                 {selectedPatient.id}
               </span>
-              <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border border-cyan-300 dark:border-cyan-500/30">
+              <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800/60">
                 {selectedPatient.enNanbaId}
               </span>
             </div>
@@ -53,7 +61,7 @@ export const PatientBanner: React.FC<PatientBannerProps> = ({
               onClick={() => onSelectPatient(p)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 selectedPatient.id === p.id
-                  ? 'bg-teal-600 dark:bg-teal-500 text-white dark:text-slate-950 font-bold shadow-md shadow-teal-500/20'
+                  ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-500/20'
                   : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800'
               }`}
             >
@@ -68,7 +76,7 @@ export const PatientBanner: React.FC<PatientBannerProps> = ({
         {/* Vitals */}
         <div className="bg-slate-50 dark:bg-slate-950/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800/80 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 font-semibold mb-2">
-            <span className="flex items-center gap-1.5 text-teal-600 dark:text-teal-400 font-bold">
+            <span className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-bold">
               <Activity className="w-4 h-4" /> Real-Time Vitals
             </span>
             <span className="text-[10px] text-slate-400">Recorded Today</span>
@@ -92,13 +100,13 @@ export const PatientBanner: React.FC<PatientBannerProps> = ({
         {/* Chronic Conditions */}
         <div className="bg-slate-50 dark:bg-slate-950/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800/80 flex flex-col justify-between">
           <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 font-semibold mb-2">
-            <FileText className="w-4 h-4 text-cyan-600 dark:text-cyan-400" /> Active Diagnoses (ICD-11)
+            <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" /> Active Diagnoses (ICD-11)
           </div>
           <div className="flex flex-wrap gap-1.5">
             {selectedPatient.chronicConditions.map((cond, idx) => (
               <span
                 key={idx}
-                className="px-2.5 py-1 rounded-md bg-cyan-50 dark:bg-cyan-950/50 text-cyan-800 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800/50 font-medium"
+                className="px-2.5 py-1 rounded-md bg-blue-50 dark:bg-blue-950/50 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50 font-medium"
               >
                 {cond}
               </span>
