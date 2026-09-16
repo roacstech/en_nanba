@@ -1,0 +1,32 @@
+{
+  "name": "en-nanban-ai-poc",
+  "version": "1.0.0",
+  "description": "EN NANBA Clinical Intelligence Platform - Proof of Concept (POC)",
+  "private": true,
+  "scripts": {
+    "dev:backend": "npm --prefix backend run start:dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev": "concurrently -n \"BACKEND,FRONTEND\" -c \"cyan,magenta\" \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "build:backend": "npm --prefix backend run build",
+    "build:frontend": "npm --prefix frontend run build",
+    "build": "npm run build:backend && npm run build:frontend",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "test:backend": "npm --prefix backend test"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "keywords": [
+    "clinical-intelligence",
+    "healthcare",
+    "neo4j",
+    "qdrant",
+    "gemini-api",
+    "langchain",
+    "fhir",
+    "icd-11",
+    "loinc",
+    "rxnorm"
+  ]
+}

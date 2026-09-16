@@ -1,0 +1,72 @@
+import { IsString, IsNotEmpty, IsOptional, IsEnum, IsArray } from 'class-validator';
+
+export class IngestTextDto {
+  @IsString()
+  @IsNotEmpty()
+  patientId: string;
+
+  @IsString()
+  @IsNotEmpty()
+  clinicalText: string;
+
+  @IsString()
+  @IsOptional()
+  documentType?: string; // 'doctor_notes', 'discharge_summary', 'lab_report', 'prescription'
+
+  @IsString()
+  @IsOptional()
+  encounterDate?: string;
+}
+
+export class IngestFhirDto {
+  @IsString()
+  @IsNotEmpty()
+  patientId: string;
+
+  @IsNotEmpty()
+  fhirBundle: Record<string, any>;
+}
+
+export class NormalizeQueryDto {
+  @IsString()
+  @IsNotEmpty()
+  term: string;
+
+  @IsOptional()
+  @IsEnum(['ICD-11', 'LOINC', 'RxNorm', 'UCUM', 'ALL'])
+  system?: 'ICD-11' | 'LOINC' | 'RxNorm' | 'UCUM' | 'ALL';
+
+  @IsOptional()
+  limit?: number;
+}
+
+export class ClinicalDecisionDto {
+  @IsString()
+  @IsNotEmpty()
+  patientId: string;
+
+  @IsEnum(['ACCEPT', 'MODIFY', 'REJECT'])
+  decision: 'ACCEPT' | 'MODIFY' | 'REJECT';
+
+  @IsString()
+  @IsOptional()
+  reasoningNotes?: string;
+
+  @IsString()
+  @IsOptional()
+  modifiedPrescription?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  doctorName: string;
+}
+
+export class RunReasoningDto {
+  @IsString()
+  @IsNotEmpty()
+  patientId: string;
+
+  @IsString()
+  @IsOptional()
+  clinicalNote?: string;
+}
