@@ -39,12 +39,12 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
       this.isConnected = true;
       this.logger.log(`Successfully connected to PostgreSQL at ${host}:${port}/${database}`);
       await this.initTables();
+      await this.syncPatientsFromDb();
     } catch (err: any) {
       this.isConnected = false;
       this.logger.warn(`PostgreSQL connection failed (${err.message}). Activating In-Memory Transactional Store.`);
+      await this.seedDefaultPatients();
     }
-
-    this.seedDefaultPatients();
   }
 
   async onModuleDestroy() {
@@ -115,7 +115,7 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  seedDefaultPatients() {
+  async seedDefaultPatients() {
     const p1: PatientProfile = {
       id: 'P-1001',
       enNanbaId: 'EN-IND-2026-09812',
@@ -219,30 +219,186 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
         clinicalSignificance: 'Absolute contraindication for Amoxicillin, Ampicillin, and related beta-lactams.',
       }
     );
+
+    // If connected to live PostgreSQL, seed tables
+    if (this.isConnected && this.pool) {
+      try {
+        for (const p of [p1, p2, p3]) {
+          await this.pool.query(
+            `INSERT INTO patients (id, en_nanba_id, full_name, age, gender, dob, phone, blood_type, chronic_conditions, allergies, vitals)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+             ON CONFLICT (id) DO NOTHING`,
+            [p.id, p.enNanbaId, p.fullName, p.age, p.gender, p.dob, p.phone, p.bloodType, JSON.stringify(p.chronicConditions), JSON.stringify(p.allergies), JSON.stringify(p.vitals)],
+          );
+        }
+        for (const ev of this.inMemoryEvidenceLedger) {
+          await this.pool.query(
+            `INSERT INTO evidence_ledger (id, patient_id, claim, source_document, status_tag, confidence_score, clinical_significance)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
+             ON CONFLICT (id) DO NOTHING`,
+            [ev.id, ev.patientId, ev.claim, ev.sourceDocument, ev.statusTag, ev.confidenceScore, ev.clinicalSignificance],
+          );
+        }
+        this.logger.log('Live PostgreSQL populated with default patients and evidence ledger entries.');
+      } catch (err: any) {
+        this.logger.warn(`Failed to seed PostgreSQL tables: ${err.message}`);
+      }
+    }
+  }
+
+  // Synchronize in-memory cache with database
+  async syncPatientsFromDb() {
+    if (!this.isConnected || !this.pool) return;
+    try {
+      const res = await this.pool.query('SELECT * FROM patients ORDER BY id ASC');
+      if (res.rows.length === 0) {
+        this.logger.log('Database empty, seeding default clinical test patients...');
+        await this.seedDefaultPatients();
+      } else {
+        this.inMemoryPatients.clear();
+        for (const r of res.rows) {
+          this.inMemoryPatients.set(r.id, {
+            id: r.id,
+            enNanbaId: r.en_nanba_id,
+            fullName: r.full_name,
+            age: r.age,
+            gender: r.gender,
+            dob: r.dob,
+            phone: r.phone,
+            bloodType: r.blood_type,
+            chronicConditions: r.chronic_conditions || [],
+            allergies: r.allergies || [],
+            vitals: r.vitals || {},
+            createdAt: r.created_at?.toISOString?.() || r.created_at,
+            updatedAt: r.updated_at?.toISOString?.() || r.updated_at,
+          });
+        }
+        this.logger.log(`Loaded ${this.inMemoryPatients.size} patient profiles from PostgreSQL.`);
+      }
+    } catch (err: any) {
+      this.logger.error(`Failed to sync patients from DB: ${err.message}`);
+    }
   }
 
   // Patients CRUD
   async getPatients(): Promise<PatientProfile[]> {
+    if (this.isConnected && this.pool) {
+      try {
+        const res = await this.pool.query('SELECT * FROM patients ORDER BY id ASC');
+        if (res.rows.length > 0) {
+          return res.rows.map(r => ({
+            id: r.id,
+            enNanbaId: r.en_nanba_id,
+            fullName: r.full_name,
+            age: r.age,
+            gender: r.gender,
+            dob: r.dob,
+            phone: r.phone,
+            bloodType: r.blood_type,
+            chronicConditions: r.chronic_conditions || [],
+            allergies: r.allergies || [],
+            vitals: r.vitals || {},
+            createdAt: r.created_at?.toISOString?.() || r.created_at,
+            updatedAt: r.updated_at?.toISOString?.() || r.updated_at,
+          }));
+        }
+      } catch (e: any) {
+        this.logger.error(`Error querying PostgreSQL patients: ${e.message}`);
+      }
+    }
     return Array.from(this.inMemoryPatients.values());
   }
 
   async getPatientById(id: string): Promise<PatientProfile | null> {
+    if (this.isConnected && this.pool) {
+      try {
+        const res = await this.pool.query('SELECT * FROM patients WHERE id = $1', [id]);
+        if (res.rows.length > 0) {
+          const r = res.rows[0];
+          return {
+            id: r.id,
+            enNanbaId: r.en_nanba_id,
+            fullName: r.full_name,
+            age: r.age,
+            gender: r.gender,
+            dob: r.dob,
+            phone: r.phone,
+            bloodType: r.blood_type,
+            chronicConditions: r.chronic_conditions || [],
+            allergies: r.allergies || [],
+            vitals: r.vitals || {},
+            createdAt: r.created_at?.toISOString?.() || r.created_at,
+            updatedAt: r.updated_at?.toISOString?.() || r.updated_at,
+          };
+        }
+      } catch (e: any) {
+        this.logger.error(`Error querying PostgreSQL patient by id: ${e.message}`);
+      }
+    }
     return this.inMemoryPatients.get(id) || null;
   }
 
   async savePatient(patient: PatientProfile): Promise<PatientProfile> {
     this.inMemoryPatients.set(patient.id, patient);
+    if (this.isConnected && this.pool) {
+      try {
+        await this.pool.query(
+          `INSERT INTO patients (id, en_nanba_id, full_name, age, gender, dob, phone, blood_type, chronic_conditions, allergies, vitals, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
+           ON CONFLICT (id) DO UPDATE SET
+             full_name = EXCLUDED.full_name,
+             chronic_conditions = EXCLUDED.chronic_conditions,
+             allergies = EXCLUDED.allergies,
+             vitals = EXCLUDED.vitals,
+             updated_at = NOW()`,
+          [patient.id, patient.enNanbaId, patient.fullName, patient.age, patient.gender, patient.dob, patient.phone, patient.bloodType, JSON.stringify(patient.chronicConditions), JSON.stringify(patient.allergies), JSON.stringify(patient.vitals)],
+        );
+      } catch (e: any) {
+        this.logger.error(`Error saving patient to PostgreSQL: ${e.message}`);
+      }
+    }
     this.logAudit('PATIENT_UPDATED', { patientId: patient.id, name: patient.fullName });
     return patient;
   }
 
   // Evidence Ledger
   async getEvidenceLedger(patientId: string): Promise<EvidenceLedgerEntry[]> {
+    if (this.isConnected && this.pool) {
+      try {
+        const res = await this.pool.query('SELECT * FROM evidence_ledger WHERE patient_id = $1 ORDER BY recorded_at DESC', [patientId]);
+        if (res.rows.length > 0) {
+          return res.rows.map(r => ({
+            id: r.id,
+            patientId: r.patient_id,
+            claim: r.claim,
+            sourceDocument: r.source_document,
+            statusTag: r.status_tag,
+            confidenceScore: r.confidence_score,
+            recordedAt: r.recorded_at?.toISOString?.() || r.recorded_at,
+            clinicalSignificance: r.clinical_significance,
+          }));
+        }
+      } catch (e: any) {
+        this.logger.error(`Error querying PostgreSQL evidence ledger: ${e.message}`);
+      }
+    }
     return this.inMemoryEvidenceLedger.filter(e => e.patientId === patientId);
   }
 
   async addEvidence(entry: EvidenceLedgerEntry): Promise<EvidenceLedgerEntry> {
     this.inMemoryEvidenceLedger.push(entry);
+    if (this.isConnected && this.pool) {
+      try {
+        await this.pool.query(
+          `INSERT INTO evidence_ledger (id, patient_id, claim, source_document, status_tag, confidence_score, clinical_significance)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           ON CONFLICT (id) DO NOTHING`,
+          [entry.id, entry.patientId, entry.claim, entry.sourceDocument, entry.statusTag, entry.confidenceScore, entry.clinicalSignificance],
+        );
+      } catch (e: any) {
+        this.logger.error(`Error adding evidence to PostgreSQL: ${e.message}`);
+      }
+    }
     this.logAudit('EVIDENCE_RECORDED', { id: entry.id, claim: entry.claim });
     return entry;
   }
@@ -250,10 +406,38 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
   // Decisions
   async recordDecision(payload: ClinicalDecisionPayload): Promise<void> {
     this.inMemoryDecisions.push(payload);
+    if (this.isConnected && this.pool) {
+      try {
+        await this.pool.query(
+          `INSERT INTO clinical_decisions (patient_id, decision, doctor_name, reasoning_notes, modified_prescription)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [payload.patientId, payload.decision, payload.doctorName, payload.reasoningNotes || null, payload.modifiedPrescription || null],
+        );
+      } catch (e: any) {
+        this.logger.error(`Error recording clinical decision to PostgreSQL: ${e.message}`);
+      }
+    }
     this.logAudit('CLINICAL_DECISION_RECORDED', payload);
   }
 
   async getDecisions(patientId: string): Promise<ClinicalDecisionPayload[]> {
+    if (this.isConnected && this.pool) {
+      try {
+        const res = await this.pool.query('SELECT * FROM clinical_decisions WHERE patient_id = $1 ORDER BY created_at DESC', [patientId]);
+        if (res.rows.length > 0) {
+          return res.rows.map(r => ({
+            patientId: r.patient_id,
+            decision: r.decision,
+            doctorName: r.doctor_name,
+            reasoningNotes: r.reasoning_notes,
+            modifiedPrescription: r.modified_prescription,
+            timestamp: r.created_at?.toISOString?.() || r.created_at,
+          }));
+        }
+      } catch (e: any) {
+        this.logger.error(`Error querying PostgreSQL clinical decisions: ${e.message}`);
+      }
+    }
     return this.inMemoryDecisions.filter(d => d.patientId === patientId);
   }
 

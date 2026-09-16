@@ -255,7 +255,19 @@ export default function DoctorWorkspacePage() {
           </div>
         ) : (
           <div className="p-16 text-center text-slate-400">
-            <p>Loading patient profiles from healthcare database...</p>
+            {isLoading ? (
+              <p className="animate-pulse">Loading patient profiles from healthcare database...</p>
+            ) : (
+              <div className="flex flex-col items-center gap-3">
+                <p>No patient profiles loaded. Ensure the Backend API is running on port 4000.</p>
+                <button
+                  onClick={loadInitialData}
+                  className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Retry Loading
+                </button>
+              </div>
+            )}
           </div>
         )}
       </main>

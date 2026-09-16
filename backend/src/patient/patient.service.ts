@@ -29,6 +29,25 @@ export class PatientService {
     return patient;
   }
 
+  async createPatient(dto: any): Promise<PatientProfile> {
+    const patient: PatientProfile = {
+      id: dto.id,
+      enNanbaId: dto.enNanbaId,
+      fullName: dto.fullName,
+      age: Number(dto.age),
+      gender: dto.gender,
+      dob: dto.dob,
+      phone: dto.phone,
+      bloodType: dto.bloodType || 'Unknown',
+      chronicConditions: dto.chronicConditions || [],
+      allergies: dto.allergies || [],
+      vitals: dto.vitals || { bloodPressure: '120/80 mmHg', heartRate: 72, oxygenSaturation: 98, bmi: 22 },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    return this.postgresService.savePatient(patient);
+  }
+
   async getPatientEvidenceLedger(patientId: string): Promise<EvidenceLedgerEntry[]> {
     return this.postgresService.getEvidenceLedger(patientId);
   }

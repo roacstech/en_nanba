@@ -70,3 +70,47 @@ export class RunReasoningDto {
   @IsOptional()
   clinicalNote?: string;
 }
+
+export class CreatePatientDto {
+  @IsString()
+  @IsNotEmpty()
+  id: string;
+
+  @IsString()
+  @IsNotEmpty()
+  enNanbaId: string;
+
+  @IsString()
+  @IsNotEmpty()
+  fullName: string;
+
+  @IsNotEmpty()
+  age: number;
+
+  @IsString()
+  @IsNotEmpty()
+  gender: 'M' | 'F' | 'Other';
+
+  @IsString()
+  @IsNotEmpty()
+  dob: string;
+
+  @IsString()
+  @IsNotEmpty()
+  phone: string;
+
+  @IsString()
+  @IsOptional()
+  bloodType?: string;
+
+  @IsArray()
+  @IsOptional()
+  chronicConditions?: string[];
+
+  @IsArray()
+  @IsOptional()
+  allergies?: string[];
+
+  @IsOptional()
+  vitals?: Record<string, any>;
+}

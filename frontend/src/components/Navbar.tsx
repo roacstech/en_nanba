@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Activity, ShieldCheck, Database, Cpu, Network, Sun, Moon } from 'lucide-react';
+import { Activity, Sun, Moon } from 'lucide-react';
 import { SystemStatus } from '../lib/api';
 import { useTheme } from '../context/ThemeContext';
 
@@ -31,47 +31,18 @@ export const Navbar: React.FC<NavbarProps> = ({ systemStatus }) => {
           </div>
         </div>
 
-        {/* Database, AI Engine Live Status Pills & Theme Switcher */}
-        <div className="flex items-center gap-2 text-xs">
-          {/* PostgreSQL */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-            <Database className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-            <span className="text-slate-700 dark:text-slate-300 font-medium hidden md:inline">PostgreSQL</span>
-            <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse"></span>
-          </div>
-
-          {/* Neo4j */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-            <Network className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
-            <span className="text-slate-700 dark:text-slate-300 font-medium hidden md:inline">Neo4j</span>
-            <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse"></span>
-          </div>
-
-          {/* Qdrant */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-            <Database className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
-            <span className="text-slate-700 dark:text-slate-300 font-medium hidden md:inline">Qdrant</span>
-            <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse"></span>
-          </div>
-
-          {/* Gemini API */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-teal-50 dark:bg-slate-900 border border-teal-500/30 text-teal-700 dark:text-teal-300">
-            <Cpu className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-            <span className="font-medium hidden sm:inline">Gemini 3.8 Flash</span>
-            <span className="w-2 h-2 rounded-full bg-teal-500 dark:bg-teal-400"></span>
-          </div>
-
-          {/* Compliance Tag */}
-          <div className="hidden lg:flex items-center gap-1 text-slate-500 dark:text-slate-400 pl-2 border-l border-slate-200 dark:border-slate-800">
-            <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-[11px] font-medium">Zero-PHI Leakage</span>
+        {/* Clean Doctor Workspace Actions & Theme Switcher */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-teal-50 dark:bg-teal-950/40 border border-teal-500/20 text-teal-700 dark:text-teal-300 text-xs font-medium">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>Clinical Intelligence Active</span>
           </div>
 
           {/* Theme Toggle Button */}
           <button
             onClick={toggleTheme}
             aria-label="Toggle Light/Dark Theme"
-            className="ml-1 p-2 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer flex items-center gap-1.5"
+            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer flex items-center gap-1.5"
             title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
           >
             {theme === 'light' ? (

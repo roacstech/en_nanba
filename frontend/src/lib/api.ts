@@ -223,4 +223,39 @@ export const api = {
     if (!res.ok) throw new Error('Failed to record doctor decision');
     return res.json();
   },
+
+  // 5 Terminology Standards Verification APIs
+  async verifyRxNorm(term: string) {
+    const res = await fetch(`${API_BASE}/normalize/verify-rxnorm?term=${encodeURIComponent(term)}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Failed to verify RxNorm');
+    return res.json();
+  },
+
+  async verifyIcd11(term: string) {
+    const res = await fetch(`${API_BASE}/normalize/verify-icd11?term=${encodeURIComponent(term)}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Failed to verify ICD-11');
+    return res.json();
+  },
+
+  async verifyLoinc(term: string) {
+    const res = await fetch(`${API_BASE}/normalize/verify-loinc?term=${encodeURIComponent(term)}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Failed to verify LOINC');
+    return res.json();
+  },
+
+  async verifyUcum(unit: string) {
+    const res = await fetch(`${API_BASE}/normalize/verify-ucum?unit=${encodeURIComponent(unit)}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Failed to verify UCUM');
+    return res.json();
+  },
+
+  async validateFhir(fhirBundle: any) {
+    const res = await fetch(`${API_BASE}/normalize/validate-fhir`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fhirBundle }),
+    });
+    if (!res.ok) throw new Error('Failed to validate FHIR bundle');
+    return res.json();
+  },
 };
