@@ -11,6 +11,7 @@ import { EvidenceLedgerView } from '../components/EvidenceLedgerView';
 import { PatientDashboard } from '../components/PatientDashboard';
 import { AuthPortal } from '../components/AuthPortal';
 import { PatientOnboardingFlow } from '../components/PatientOnboardingFlow';
+import LiveClinicalFlowVisualizer from '../components/LiveClinicalFlowVisualizer';
 import {
   api,
   AuthUser,
@@ -27,6 +28,9 @@ import {
   Cpu,
   BookOpen,
   Layers,
+  Zap,
+  Sparkles,
+  ArrowRight,
 } from 'lucide-react';
 
 export default function DoctorWorkspacePage() {
@@ -40,7 +44,8 @@ export default function DoctorWorkspacePage() {
   const [radarAlerts, setRadarAlerts] = useState<RadarAlert[]>([]);
   const [evidenceLedger, setEvidenceLedger] = useState<EvidenceLedgerEntry[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<'workspace' | 'graph' | 'radar' | 'ingest' | 'ai' | 'ledger'>('workspace');
+  const [activeTab, setActiveTab] = useState<'workspace' | 'live-flow' | 'graph' | 'radar' | 'ingest' | 'ai' | 'ledger'>('workspace');
+
 
   // Role Separation States
   const [activePatient, setActivePatient] = useState<PatientProfile | null>(null);
@@ -297,6 +302,17 @@ export default function DoctorWorkspacePage() {
               </button>
 
               <button
+                onClick={() => setActiveTab('live-flow')}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                  activeTab === 'live-flow'
+                    ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-600 text-white shadow-md shadow-indigo-500/30 ring-2 ring-indigo-400/40'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-900'
+                }`}
+              >
+                <Zap className="w-4 h-4 text-cyan-400 animate-pulse" /> Live AI Pipeline (7 Steps)
+              </button>
+
+              <button
                 onClick={() => setActiveTab('graph')}
                 className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
                   activeTab === 'graph'
@@ -358,6 +374,34 @@ export default function DoctorWorkspacePage() {
                 {/* 1. All-In-One Integrated Workspace */}
                 {activeTab === 'workspace' && (
                   <div className="space-y-6">
+                    {/* 7-Step Live Flowchart Banner */}
+                    <div className="p-4 rounded-2xl bg-gradient-to-r from-indigo-950/80 via-purple-950/50 to-slate-900 border border-indigo-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/40 text-indigo-400 flex items-center justify-center flex-shrink-0">
+                          <Zap className="w-5 h-5 text-indigo-400" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-bold text-white flex items-center gap-2">
+                            Interactive 7-Step Clinical AI Pipeline
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono font-normal">
+                              Live APIs Active
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            Raw Text &rarr; Gemini NER &rarr; ICD-11, RxNorm, LOINC, UCUM &rarr; FHIR Bundle &rarr; Contradiction Radar &rarr; Doctor Sign-off.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setActiveTab('live-flow')}
+                        className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md flex items-center gap-2 transition-all flex-shrink-0 cursor-pointer"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-indigo-200" />
+                        Open Live Pipeline
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
                     {/* Contradiction Radar Banner if Hazards exist */}
                     <ContradictionRadar
                       alerts={radarAlerts}
@@ -437,6 +481,17 @@ export default function DoctorWorkspacePage() {
                   <EvidenceLedgerView
                     entries={evidenceLedger}
                     isLoading={isLoading}
+                  />
+                )}
+
+                {/* 7. Live 7-Step Clinical AI Pipeline (Flowchart) */}
+                {activeTab === 'live-flow' && (
+                  <LiveClinicalFlowVisualizer
+                    key={selectedPatient.id}
+                    patient={selectedPatient}
+                    patientId={selectedPatient.id}
+                    doctorId={currentUser?.hospitalId || currentUser?.id || 'DOC-CMC-01'}
+                    doctorName={currentUser?.fullName || 'Dr. Aravind Swamy, MD'}
                   />
                 )}
               </div>

@@ -66,6 +66,20 @@ export const MEDICAL_DICTIONARIES: MedicalCode[] = [
     category: 'Allergies and Hypersensitivities',
   },
   {
+    code: 'CA23',
+    display: 'Asthma',
+    system: 'ICD-11',
+    description: 'Chronic inflammatory disorder of the airways characterized by recurrent episodes of wheezing, breathlessness, chest tightness, and coughing.',
+    category: 'Diseases of the respiratory system',
+  },
+  {
+    code: 'CA08',
+    display: 'Allergic rhinitis',
+    system: 'ICD-11',
+    description: 'Inflammation of the inside of the nose caused by an allergen, such as pollen, dust, mould or flakes of skin from certain animals.',
+    category: 'Diseases of the respiratory system',
+  },
+  {
     code: 'FA20',
     display: 'Osteoarthritis of knee',
     system: 'ICD-11',
@@ -211,10 +225,77 @@ export const MEDICAL_DICTIONARIES: MedicalCode[] = [
   },
   {
     code: '161',
-    display: 'Acetaminophen 500 MG Oral Tablet',
+    display: 'Paracetamol / Acetaminophen 650 MG Oral Tablet',
     system: 'RxNorm',
-    description: 'Analgesic and antipyretic for mild-to-moderate pain and fever.',
-    category: 'Analgesic',
+    description: 'Analgesic and antipyretic for fever reduction and mild-to-moderate pain.',
+    category: 'Antipyretic / Analgesic',
+  },
+  {
+    code: '70618',
+    display: 'Penicillin G Potassium 500 MG',
+    system: 'RxNorm',
+    description: 'Natural beta-lactam penicillin antibiotic. Triggers severe allergic shock in sensitized individuals.',
+    category: 'Antibacterial / Penicillin',
+  },
+  {
+    code: '7986',
+    display: 'Penicillin',
+    system: 'RxNorm',
+    description: 'Beta-lactam class antibiotic. Documented high allergy cross-reactivity with Aminopenicillins.',
+    category: 'Antibacterial / Penicillin',
+  },
+  {
+    code: '18631',
+    display: 'Azithromycin 500 MG Oral Tablet',
+    system: 'RxNorm',
+    description: 'Macrolide antibiotic. First-line safe alternative for respiratory and systemic infections in Penicillin-allergic patients.',
+    category: 'Antibacterial / Macrolide',
+  },
+  {
+    code: '5640',
+    display: 'Ibuprofen 400 MG Oral Tablet',
+    system: 'RxNorm',
+    description: 'Nonsteroidal anti-inflammatory drug (NSAID). High risk of bronchospasm in patients with asthma.',
+    category: 'Analgesic / NSAID',
+  },
+  {
+    code: '36117',
+    display: 'Salbutamol 100 MCG Inhaler',
+    system: 'RxNorm',
+    description: 'Short-acting beta-2 adrenergic agonist bronchodilator for asthma relief.',
+    category: 'Respiratory / Bronchodilator',
+  },
+  {
+    code: '72237',
+    display: 'Montelukast 10 MG Oral Tablet',
+    system: 'RxNorm',
+    description: 'Leukotriene receptor antagonist for prophylaxis and chronic treatment of bronchial asthma.',
+    category: 'Respiratory / Leukotriene modifier',
+  },
+
+  // ==================== ICD-11 (Additional Symptoms & Signs) ====================
+  {
+    code: 'MG26',
+    display: 'Fever of other or unknown origin',
+    system: 'ICD-11',
+    description: 'Elevation of body temperature above normal range (pyrexia / fever > 100.4°F or 38°C).',
+    category: 'Symptoms, signs or clinical findings',
+  },
+
+  // ==================== LOINC (Vitals & Labs) ====================
+  {
+    code: '8310-5',
+    display: 'Body temperature',
+    system: 'LOINC',
+    description: 'Core body temperature measured clinically in degrees Fahrenheit or Celsius.',
+    category: 'Vitals',
+  },
+  {
+    code: '1992-9',
+    display: 'Peak expiratory flow rate',
+    system: 'LOINC',
+    description: 'Maximum rate of airflow during forced expiration, vital marker for asthma monitoring.',
+    category: 'Pulmonary function',
   },
 
   // ==================== UCUM (Units of Measure) ====================
@@ -252,6 +333,20 @@ export const MEDICAL_DICTIONARIES: MedicalCode[] = [
     system: 'UCUM',
     description: 'Percentage ratio, commonly used for HbA1c and oxygen saturation.',
     category: 'Fraction',
+  },
+  {
+    code: '[degF]',
+    display: 'degree Fahrenheit',
+    system: 'UCUM',
+    description: 'Standard clinical temperature scale unit for fever and vitals monitoring.',
+    category: 'Temperature',
+  },
+  {
+    code: 'Cel',
+    display: 'degree Celsius',
+    system: 'UCUM',
+    description: 'SI temperature unit.',
+    category: 'Temperature',
   },
   {
     code: '/min',

@@ -21,6 +21,7 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
   private inMemoryPatients: Map<string, PatientProfile> = new Map();
   private inMemoryEvidenceLedger: EvidenceLedgerEntry[] = [];
   private inMemoryDecisions: ClinicalDecisionPayload[] = [];
+  private inMemoryFhirBundles: Map<string, any> = new Map();
   private inMemoryAuditLogs: Array<{ id: string; action: string; details: any; timestamp: string }> = [];
 
   hashPassword(password: string): string {
@@ -73,13 +74,30 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
+  getDefaultPatient5(): UserAccount {
+    return {
+      id: 'USR-PAT-1005',
+      email: 'ramesh.patel@example.com',
+      passwordHash: this.hashPassword('patient123'),
+      role: 'patient',
+      fullName: 'Ramesh Patel',
+      phone: '+91 98405 67890',
+      patientId: 'P-1005',
+      isIntakeCompleted: true,
+      createdAt: '2024-03-10T10:00:00Z',
+      updatedAt: '2026-09-17T11:00:00Z',
+    };
+  }
+
   constructor(private configService: ConfigService) {
     const doc = this.getDefaultDoctor();
     const p1 = this.getDefaultPatient1();
     const p2 = this.getDefaultPatient2();
+    const p5 = this.getDefaultPatient5();
     this.inMemoryUsers.set(doc.id, doc);
     this.inMemoryUsers.set(p1.id, p1);
     this.inMemoryUsers.set(p2.id, p2);
+    this.inMemoryUsers.set(p5.id, p5);
   }
 
   async onModuleInit() {
@@ -220,6 +238,14 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
           created_at TIMESTAMPTZ DEFAULT NOW()
         );
 
+        CREATE TABLE IF NOT EXISTS fhir_bundles (
+          id VARCHAR(64) PRIMARY KEY,
+          patient_id VARCHAR(64) NOT NULL,
+          resource_type VARCHAR(50) NOT NULL,
+          bundle_data JSONB NOT NULL,
+          created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+
         CREATE TABLE IF NOT EXISTS audit_logs (
           id VARCHAR(64) PRIMARY KEY,
           action VARCHAR(100) NOT NULL,
@@ -227,7 +253,7 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
           timestamp TIMESTAMPTZ DEFAULT NOW()
         );
       `);
-      this.logger.log('PostgreSQL schema (users, patients, evidence_ledger, clinical_decisions, audit_logs) verified.');
+      this.logger.log('PostgreSQL schema (users, patients, evidence_ledger, clinical_decisions, fhir_bundles, audit_logs) verified.');
     } catch (e: any) {
       this.logger.error(`Error initializing PostgreSQL schema: ${e.message}`);
     }
@@ -300,9 +326,32 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
       updatedAt: '2026-09-12T14:45:00Z',
     };
 
+    const p5: PatientProfile = {
+      id: 'P-1005',
+      enNanbaId: 'EN-IND-2026-09815',
+      fullName: 'Ramesh Patel',
+      age: 52,
+      gender: 'M',
+      dob: '1974-05-18',
+      phone: '+91 98405 67890',
+      bloodType: 'O+',
+      chronicConditions: ['Type 2 diabetes mellitus'],
+      allergies: ['Penicillin (Severe anaphylactic shock risk)'],
+      vitals: {
+        bloodPressure: '130/85 mmHg',
+        heartRate: 88,
+        bloodGlucose: '180 mg/dL',
+        oxygenSaturation: 97,
+        bmi: 26.2,
+      },
+      createdAt: '2024-03-10T10:00:00Z',
+      updatedAt: '2026-09-17T11:00:00Z',
+    };
+
     this.inMemoryPatients.set(p1.id, p1);
     this.inMemoryPatients.set(p2.id, p2);
     this.inMemoryPatients.set(p3.id, p3);
+    this.inMemoryPatients.set(p5.id, p5);
 
     // Seed sample evidence ledger
     this.inMemoryEvidenceLedger.push(
@@ -335,58 +384,43 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
         confidenceScore: 1.0,
         recordedAt: '2024-06-15T09:10:00Z',
         clinicalSignificance: 'Absolute contraindication for Amoxicillin, Ampicillin, and related beta-lactams.',
+      },
+      {
+        id: 'EV-04',
+        patientId: 'P-1005',
+        claim: 'Diagnosed with Type 2 Diabetes Mellitus [ICD-11: 5A11]',
+        sourceDocument: 'Endocrinology Consultation Note',
+        statusTag: 'verified',
+        confidenceScore: 1.0,
+        recordedAt: '2024-03-10T10:30:00Z',
+        clinicalSignificance: 'Active Metformin 500mg daily prescription.',
+      },
+      {
+        id: 'EV-05',
+        patientId: 'P-1005',
+        claim: 'Documented life-threatening Penicillin allergy [RxNorm: 70618] with past anaphylaxis',
+        sourceDocument: 'Allergy Testing Clinic Record',
+        statusTag: 'verified',
+        confidenceScore: 1.0,
+        recordedAt: '2024-03-10T11:00:00Z',
+        clinicalSignificance: 'Fatal contraindication for beta-lactam antibiotics (Amoxicillin, Ampicillin).',
       }
     );
 
     // Seed default users
-    const defaultDoctor: UserAccount = {
-      id: 'USR-DOC-001',
-      email: 'doctor@ennanba.ai',
-      passwordHash: this.hashPassword('doctor123'),
-      role: 'doctor',
-      fullName: 'Dr. Aravind Swamy, MD (Cardiology)',
-      phone: '+91 98400 11223',
-      specialization: 'Chief Cardiologist & Critical Care',
-      hospitalId: 'CMC-CARD-001',
-      isIntakeCompleted: true,
-      createdAt: '2024-01-01T00:00:00Z',
-      updatedAt: '2026-09-17T10:00:00Z',
-    };
+    const defaultDoctor = this.getDefaultDoctor();
+    const defaultPatient1 = this.getDefaultPatient1();
+    const defaultPatient2 = this.getDefaultPatient2();
+    const defaultPatient5 = this.getDefaultPatient5();
 
-    const defaultPatient1: UserAccount = {
-      id: 'USR-PAT-1001',
-      email: 'rajesh.kumar@example.com',
-      passwordHash: this.hashPassword('patient123'),
-      role: 'patient',
-      fullName: 'Rajesh Kumar',
-      phone: '+91 98401 23456',
-      patientId: 'P-1001',
-      isIntakeCompleted: true,
-      createdAt: '2024-01-10T08:00:00Z',
-      updatedAt: '2026-09-14T10:30:00Z',
-    };
-
-    const defaultPatient2: UserAccount = {
-      id: 'USR-PAT-1002',
-      email: 'priya.sharma@example.com',
-      passwordHash: this.hashPassword('patient123'),
-      role: 'patient',
-      fullName: 'Priya Sharma',
-      phone: '+91 98402 78901',
-      patientId: 'P-1002',
-      isIntakeCompleted: true,
-      createdAt: '2024-06-15T09:00:00Z',
-      updatedAt: '2026-09-15T08:15:00Z',
-    };
-
-    for (const u of [defaultDoctor, defaultPatient1, defaultPatient2]) {
+    for (const u of [defaultDoctor, defaultPatient1, defaultPatient2, defaultPatient5]) {
       this.inMemoryUsers.set(u.id, u);
     }
 
     // If connected to live PostgreSQL, seed tables
     if (this.isConnected && this.pool) {
       try {
-        for (const p of [p1, p2, p3]) {
+        for (const p of [p1, p2, p3, p5]) {
           await this.pool.query(
             `INSERT INTO patients (id, en_nanba_id, full_name, age, gender, dob, phone, blood_type, chronic_conditions, allergies, vitals)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
@@ -402,7 +436,7 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
             [ev.id, ev.patientId, ev.claim, ev.sourceDocument, ev.statusTag, ev.confidenceScore, ev.clinicalSignificance],
           );
         }
-        for (const u of [defaultDoctor, defaultPatient1, defaultPatient2]) {
+        for (const u of [defaultDoctor, defaultPatient1, defaultPatient2, defaultPatient5]) {
           await this.pool.query(
             `INSERT INTO users (id, email, password_hash, role, full_name, phone, patient_id, is_intake_completed, specialization, hospital_id)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -567,8 +601,52 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
       this.inMemoryUsers.set(p.id, p);
       return p;
     }
+    if (lowerId === 'ramesh.patel@example.com' || cleanId === '+91 98405 67890' || cleanId === 'P-1005') {
+      const p = this.getDefaultPatient5();
+      this.inMemoryUsers.set(p.id, p);
+      return p;
+    }
 
     return null;
+  }
+
+  async saveFhirBundle(bundle: any, patientId: string): Promise<any> {
+    const id = `FHIR-BUNDLE-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    this.inMemoryFhirBundles.set(id, { id, patientId, bundle, createdAt: new Date().toISOString() });
+    if (this.isConnected && this.pool) {
+      try {
+        await this.pool.query(
+          `INSERT INTO fhir_bundles (id, patient_id, resource_type, bundle_data, created_at)
+           VALUES ($1, $2, $3, $4, NOW())
+           ON CONFLICT (id) DO NOTHING`,
+          [id, patientId, bundle.resourceType || 'Bundle', JSON.stringify(bundle)],
+        );
+      } catch (e: any) {
+        this.logger.error(`Error saving FHIR bundle to PostgreSQL: ${e.message}`);
+      }
+    }
+    this.logAudit('FHIR_BUNDLE_STORED', { id, patientId, entryCount: bundle.entry?.length || 0 });
+    return { id, patientId, stored: true };
+  }
+
+  async getFhirBundles(patientId: string): Promise<any[]> {
+    if (this.isConnected && this.pool) {
+      try {
+        const res = await this.pool.query('SELECT * FROM fhir_bundles WHERE patient_id = $1 ORDER BY created_at DESC', [patientId]);
+        if (res.rows.length > 0) {
+          return res.rows.map(r => ({
+            id: r.id,
+            patientId: r.patient_id,
+            resourceType: r.resource_type,
+            bundle: r.bundle_data,
+            createdAt: r.created_at,
+          }));
+        }
+      } catch (e: any) {
+        this.logger.error(`Error fetching FHIR bundles from PostgreSQL: ${e.message}`);
+      }
+    }
+    return Array.from(this.inMemoryFhirBundles.values()).filter(b => b.patientId === patientId);
   }
 
   async getUserById(id: string): Promise<UserAccount | null> {

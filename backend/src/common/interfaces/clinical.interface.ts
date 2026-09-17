@@ -135,3 +135,97 @@ export interface UserSession {
   token?: string;
 }
 
+// =========================================================================
+// 7-Step Clinical AI Workflow Interfaces (Flowchart Pipeline)
+// =========================================================================
+
+export interface ClinicalEntityBucket {
+  disease?: string;
+  medication?: string;
+  allergy?: string;
+  labTest?: string;
+  symptom?: string;
+  rawTextMap?: Record<string, string>;
+}
+
+export interface LiveApiCodeMatch {
+  standard: 'ICD-11' | 'RxNorm' | 'LOINC' | 'UCUM';
+  source: string;
+  queryTerm: string;
+  officialCode: string;
+  officialDisplay: string;
+  category?: string;
+  apiUrl?: string;
+  latencyMs?: number;
+  verified: boolean;
+  score?: number;
+  details?: any;
+}
+
+export interface ClinicalFlowExecutePayload {
+  patientId?: string;
+  patientName?: string;
+  rawText: string;
+  proposedMedication?: string;
+  doctorName?: string;
+}
+
+export interface ClinicalFlowExecutionResult {
+  step1RawText: {
+    text: string;
+    patientId: string;
+    patientName: string;
+    enteredBy: string;
+    timestamp: string;
+  };
+  step2NlpBuckets: {
+    disease: string;
+    medication: string;
+    allergy: string;
+    labTest: string;
+    symptom: string;
+    allEntities: Array<{ bucket: string; term: string; value?: string; unit?: string }>;
+  };
+  step3LiveApis: {
+    icd11: LiveApiCodeMatch;
+    rxNormMedication: LiveApiCodeMatch;
+    rxNormAllergy: LiveApiCodeMatch;
+    loincLabTest: LiveApiCodeMatch;
+    ucumUnits: Array<{ unit: string; isValid: boolean; description: string }>;
+    allMatches: LiveApiCodeMatch[];
+  };
+  step4FhirPackage: {
+    resourceCount: number;
+    fhirBundle: any;
+    storedInPostgres: boolean;
+    postgresTable: string;
+    syncedToNeo4j: boolean;
+    evidenceLedgerRecordedCount: number;
+  };
+  step5ContradictionRadar: {
+    hasConflict: boolean;
+    severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+    blockedDrugs: string[];
+    conflictSummary: string;
+    clinicalHazard: string;
+    geminiRecommendation: {
+      safeAlternative: string;
+      clinicalRationale: string;
+      suggestedPrescription: Array<{ drug: string; dose: string; rxNormCode: string }>;
+    };
+  };
+  step6DoctorWorkspace: {
+    pastHistorySummary: string;
+    presentEncounterSummary: string;
+    differentialDiagnoses: Array<{ condition: string; code: string; probability: string }>;
+    safetyRiskAlert: string;
+  };
+  step7HumanSignature: {
+    status: 'PENDING_DOCTOR_DECISION' | 'ACCEPTED' | 'MODIFIED' | 'REJECTED';
+    decision?: 'ACCEPT' | 'MODIFY' | 'REJECT';
+    signedBy?: string;
+    timestamp?: string;
+  };
+}
+
+

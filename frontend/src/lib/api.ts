@@ -412,6 +412,141 @@ export const api = {
     }
     return res.json();
   },
+
+  // 7-Step Clinical AI Workflow (Flowchart)
+  async executeClinicalFlow(payload: {
+    patientId: string;
+    rawText: string;
+    doctorId?: string;
+    doctorName?: string;
+  }): Promise<ClinicalFlowExecutionResult> {
+    const res = await fetch(`${API_BASE}/clinical-flow/execute`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: 'Clinical workflow execution failed' }));
+      throw new Error(err.message || 'Failed to execute clinical workflow');
+    }
+    return res.json();
+  },
+
+  async recordClinicalFlowDecision(payload: {
+    patientId: string;
+    doctorId: string;
+    doctorName: string;
+    decision: 'ACCEPT' | 'MODIFY' | 'REJECT';
+    approvedDrugs?: string[];
+    rejectedDrugs?: string[];
+    notes?: string;
+  }): Promise<{
+    success: boolean;
+    decision: string;
+    doctorName: string;
+    timestamp: string;
+    signature: string;
+    auditLogged: boolean;
+    message: string;
+  }> {
+    const res = await fetch(`${API_BASE}/clinical-flow/decision`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: 'Failed to record decision' }));
+      throw new Error(err.message || 'Doctor decision recording failed');
+    }
+    return res.json();
+  },
 };
+
+export interface ClinicalLiveApiMatch {
+  standard: 'ICD-11' | 'RxNorm' | 'LOINC' | 'UCUM' | 'SNOMED-CT';
+  source: string;
+  queryTerm: string;
+  officialCode: string;
+  officialDisplay: string;
+  category?: string;
+  apiUrl?: string;
+  latencyMs: number;
+  verified: boolean;
+  score?: number;
+  details?: Record<string, any>;
+}
+
+export interface ClinicalFlowExecutionResult {
+  step1RawText: {
+    text: string;
+    patientId: string;
+    patientName: string;
+    enteredBy: string;
+    timestamp: string;
+  };
+  step2NlpBuckets: {
+    disease: string;
+    medication: string;
+    allergy: string;
+    labTest: string;
+    symptom: string;
+    allEntities: Array<{
+      text: string;
+      category: string;
+      confidence: number;
+    }>;
+  };
+  step3LiveApis: {
+    icd11: ClinicalLiveApiMatch;
+    rxNormMedication: ClinicalLiveApiMatch;
+    rxNormAllergy: ClinicalLiveApiMatch;
+    loincLabTest: ClinicalLiveApiMatch;
+    ucumUnits: Array<{ unit: string; valid: boolean; standard: string }>;
+    allMatches: ClinicalLiveApiMatch[];
+  };
+  step4FhirPackage: {
+    resourceCount: number;
+    fhirBundle: any;
+    storedInPostgres: boolean;
+    postgresTable: string;
+    syncedToNeo4j: boolean;
+    evidenceLedgerRecordedCount: number;
+  };
+  step5ContradictionRadar: {
+    hasConflict: boolean;
+    severity: string;
+    blockedDrugs: string[];
+    conflictSummary: string;
+    clinicalHazard: string;
+    geminiRecommendation: {
+      safeAlternative: string;
+      clinicalRationale: string;
+      suggestedPrescription: Array<{
+        drugName: string;
+        dosage: string;
+        frequency: string;
+        duration: string;
+        rxNormCode: string;
+      }>;
+    };
+  };
+  step6DoctorWorkspace: {
+    pastHistorySummary: string;
+    presentEncounterSummary: string;
+    differentialDiagnoses: Array<{
+      condition: string;
+      icd11Code: string;
+      confidenceScore: number;
+    }>;
+    safetyRiskAlert: string;
+  };
+  step7HumanSignature: {
+    status: 'PENDING_DOCTOR_DECISION' | 'APPROVED' | 'MODIFIED' | 'REJECTED';
+    decisionId?: string;
+    doctorName?: string;
+    timestamp?: string;
+    digitalSignature?: string;
+  };
+}
 
 
