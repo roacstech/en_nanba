@@ -109,29 +109,14 @@ export class RunReasoningDto {
   clinicalNote?: string;
 }
 
-export class PatientVitalsDto {
+export class CreatePatientDto {
   @IsString()
   @IsNotEmpty()
-  bloodPressure: string;
+  id: string;
 
-  @IsNotEmpty()
-  heartRate: number;
-
-  @IsOptional()
   @IsString()
-  bloodGlucose?: string;
-
   @IsNotEmpty()
-  oxygenSaturation: number;
-
-  @IsNotEmpty()
-  bmi: number;
-}
-
-export class PatientIntakeDto {
-  @IsOptional()
-  @IsString()
-  patientId?: string;
+  enNanbaId: string;
 
   @IsString()
   @IsNotEmpty()
@@ -153,72 +138,17 @@ export class PatientIntakeDto {
   phone: string;
 
   @IsString()
-  @IsNotEmpty()
-  bloodType: string;
-
-  @IsNotEmpty()
-  vitals: PatientVitalsDto;
-
   @IsOptional()
-  @IsArray()
-  chronicConditions?: string[];
-
-  @IsOptional()
-  @IsArray()
-  allergies?: string[];
-
-  @IsOptional()
-  @IsArray()
-  currentMedications?: string[];
-
-  @IsOptional()
-  @IsString()
-  symptomsNotes?: string;
-}
-
-export class CreatePatientDto extends PatientIntakeDto {}
-
-export class UpdatePatientDto {
-  @IsOptional()
-  @IsString()
-  fullName?: string;
-
-  @IsOptional()
-  age?: number;
-
-  @IsOptional()
-  @IsString()
-  gender?: 'M' | 'F' | 'Other';
-
-  @IsOptional()
-  @IsString()
-  dob?: string;
-
-  @IsOptional()
-  @IsString()
-  phone?: string;
-
-  @IsOptional()
-  @IsString()
   bloodType?: string;
 
-  @IsOptional()
-  vitals?: PatientVitalsDto;
-
-  @IsOptional()
   @IsArray()
+  @IsOptional()
   chronicConditions?: string[];
 
-  @IsOptional()
   @IsArray()
+  @IsOptional()
   allergies?: string[];
 
   @IsOptional()
-  @IsArray()
-  currentMedications?: string[];
-
-  @IsOptional()
-  @IsString()
-  symptomsNotes?: string;
+  vitals?: Record<string, any>;
 }
-

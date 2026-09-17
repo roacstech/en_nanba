@@ -1,0 +1,316 @@
+﻿<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="utf-8">
+<title>EN NANBA - Clinical Intelligence Platform End-to-End Flow</title>
+<!--[if gte mso 9]>
+<xml>
+<w:WordDocument>
+<w:View>Print</w:View>
+<w:Zoom>100</w:Zoom>
+<w:DoNotOptimizeForBrowser/>
+</w:WordDocument>
+</xml>
+<![endif]-->
+<style>
+  body { font-family: "Calibri", "Segoe UI", Arial, sans-serif; font-size: 11pt; line-height: 1.6; color: #1e293b; margin: 40pt; }
+  h1 { font-size: 26pt; color: #0284c7; font-weight: bold; border-bottom: 3pt solid #0284c7; padding-bottom: 8pt; margin-bottom: 6pt; }
+  .subtitle { font-size: 13pt; color: #64748b; font-weight: 500; margin-bottom: 24pt; }
+  h2 { font-size: 16pt; color: #0f766e; font-weight: bold; margin-top: 24pt; border-bottom: 1pt solid #cbd5e1; padding-bottom: 4pt; }
+  h3 { font-size: 13pt; color: #334155; font-weight: bold; margin-top: 14pt; }
+  table { border-collapse: collapse; width: 100%; margin: 12pt 0; font-size: 10pt; }
+  th { background-color: #0284c7; color: #ffffff; font-weight: bold; padding: 8pt 10pt; border: 1pt solid #cbd5e1; text-align: left; }
+  td { padding: 8pt 10pt; border: 1pt solid #cbd5e1; vertical-align: top; }
+  tr:nth-child(even) { background-color: #f8fafc; }
+  .box { background-color: #f1f5f9; border-left: 4pt solid #0284c7; padding: 12pt; margin: 12pt 0; border-radius: 4pt; }
+  .step-card { background-color: #f8fafc; border: 1pt solid #cbd5e1; border-left: 6pt solid #0f766e; padding: 12pt 16pt; margin: 12pt 0; }
+  .alert-box { background-color: #fef2f2; border-left: 5pt solid #ef4444; padding: 12pt; margin: 12pt 0; color: #991b1b; }
+  .success-box { background-color: #f0fdf4; border-left: 5pt solid #10b981; padding: 12pt; margin: 12pt 0; color: #065f46; }
+  .code { font-family: "Consolas", monospace; background-color: #f1f5f9; padding: 2pt 4pt; font-size: 9.5pt; color: #0369a1; border-radius: 3pt; }
+  .badge { display: inline-block; padding: 3pt 8pt; border-radius: 10pt; font-size: 8.5pt; font-weight: bold; text-transform: uppercase; }
+  .badge-blue { background-color: #e0f2fe; color: #0369a1; }
+  .badge-red { background-color: #fee2e2; color: #991b1b; }
+  .badge-green { background-color: #dcfce7; color: #166534; }
+  .badge-purple { background-color: #f3e8ff; color: #6b21a8; }
+  .footer { margin-top: 40pt; font-size: 9pt; color: #94a3b8; border-top: 1pt solid #e2e8f0; padding-top: 10pt; text-align: center; }
+</style>
+</head>
+<body>
+
+  <!-- Title Header -->
+  <h1>EN NANBA Clinical Intelligence Platform</h1>
+  <div class="subtitle">
+    <strong>Technical Architecture & End-to-End Clinical Flow Document</strong><br>
+    Company: ROACS Technologies Pvt Ltd &bull; System Version: 1.0 &bull; Release Date: September 2026
+  </div>
+
+  <div class="box">
+    <strong>Executive Summary:</strong><br>
+    This document outlines the complete architectural journey of patient data inside the <strong>EN NANBA Clinical Intelligence Platform</strong>. It defines how unstructured doctor notes are ingested, parsed via Clinical NLP, normalized against five international healthcare standards (<strong>ICD-11, RxNorm, LOINC, UCUM, and FHIR</strong>), cross-referenced through a deterministic Contradiction Radar, analyzed by AI (Google Gemini Clinical Assistant), and presented to clinicians in the Doctor Workspace for final human sign-off recorded permanently in an immutable PostgreSQL Evidence Ledger.
+  </div>
+
+  <h2>1. Complete 7-Step Architectural Pipeline Overview</h2>
+  
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 10%;">Step</th>
+        <th style="width: 25%;">Stage Name</th>
+        <th style="width: 35%;">Engine / Standard Used</th>
+        <th style="width: 30%;">Real Clinical Example</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Step 1</strong></td>
+        <td><strong>Raw Patient Input</strong></td>
+        <td>Clinical Doctor Notes / Hospital Admission</td>
+        <td>Ramesh Patel, Fever 102°F, Metformin, Penicillin allergy</td>
+      </tr>
+      <tr>
+        <td><strong>Step 2</strong></td>
+        <td><strong>Clinical NLP Parsing</strong></td>
+        <td>Named Entity Recognition (NER Engine)</td>
+        <td>Separates: Disease, Pill, Allergy, and Lab</td>
+      </tr>
+      <tr>
+        <td><strong>Step 3</strong></td>
+        <td><strong>Terminology Normalization</strong></td>
+        <td><strong>ICD-11, RxNorm, LOINC, UCUM</strong></td>
+        <td>WHO (5A11), NIH (6809, 70618), LOINC (4548-4)</td>
+      </tr>
+      <tr>
+        <td><strong>Step 4</strong></td>
+        <td><strong>FHIR Standard & Storage</strong></td>
+        <td><strong>HL7 FHIR JSON Bundle</strong> + PostgreSQL</td>
+        <td>Saved to VPS Database <span class="code">147.93.30.32:5435</span></td>
+      </tr>
+      <tr>
+        <td><strong>Step 5</strong></td>
+        <td><strong>AI Safety Reasoning</strong></td>
+        <td><strong>Contradiction Radar</strong> + Gemini AI</td>
+        <td>🚨 BLOCKS Amoxicillin; Recommends Azithromycin</td>
+      </tr>
+      <tr>
+        <td><strong>Step 6</strong></td>
+        <td><strong>Doctor Workspace UI</strong></td>
+        <td>Doctor Intelligence Dashboard</td>
+        <td>Displays Diagnosis, Allergy Alerts, & Safe Prescription</td>
+      </tr>
+      <tr>
+        <td><strong>Step 7</strong></td>
+        <td><strong>Doctor Final Decision</strong></td>
+        <td><strong>Human-in-the-Loop</strong> Decision Capture</td>
+        <td>Doctor approves (ACCEPT/MODIFY) ➔ Saved to Ledger</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>2. Deep-Dive: The 7 Steps Explained</h2>
+
+  <!-- Step 1 -->
+  <div class="step-card">
+    <h3><span class="badge badge-blue">STEP 1</span> Simple Patient Data (Raw Clinical Input)</h3>
+    <p>Clinicians and triage nurses enter clinical observations in natural human language without being required to memorize or search medical code databases:</p>
+    <div class="box">
+      <em>"Patient Ramesh Patel (ID: P-1005): Male, 58 years old. Presenting today with high fever 102°F and productive chest cough. Past medical history includes Type 2 Diabetes Mellitus and Essential Hypertension. Ongoing daily medications: Metformin 500mg and Sildenafil 50mg. Documented severe allergy to Penicillin. Recent blood sugar HbA1c is 8.2%."</em>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="step-card">
+    <h3><span class="badge badge-blue">STEP 2</span> AI Clinical NLP Entity Extraction</h3>
+    <p>The system ingests the raw paragraph and parses each phrase into structured clinical entity buckets:</p>
+    <ul>
+      <td><strong>Disease Entities:</strong> "Type 2 Diabetes Mellitus", "Essential Hypertension"</td>
+      <td><strong>Medication Entities:</strong> "Metformin 500mg", "Sildenafil 50mg"</td>
+      <td><strong>Allergy Entities:</strong> "Penicillin (Severe allergic reaction / anaphylaxis risk)"</td>
+      <td><strong>Observation / Lab Entities:</strong> "Blood Sugar HbA1c: 8.2%", "Fever 102°F"</td>
+    </ul>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="step-card">
+    <h3><span class="badge badge-blue">STEP 3</span> AI Calls Live APIs to Find Codes (The 4 Standards)</h3>
+    <p>The platform queries the official global terminology authority servers to map natural language into universal healthcare identifiers:</p>
+    
+    <table>
+      <thead>
+        <tr>
+          <th>Standard</th>
+          <th>Authority Provider</th>
+          <th>Domain</th>
+          <th>Code Found</th>
+          <th>Standardized Name</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>ICD-11</strong></td>
+          <td>World Health Organization (Geneva)</td>
+          <td>Diseases & Conditions</td>
+          <td><span class="code">5A11</span></td>
+          <td>Type 2 diabetes mellitus</td>
+        </tr>
+        <tr>
+          <td><strong>RxNorm</strong></td>
+          <td>U.S. National Library of Medicine (NIH)</td>
+          <td>Medications</td>
+          <td><span class="code">6809</span></td>
+          <td>Metformin Hydrochloride Oral Tablet</td>
+        </tr>
+        <tr>
+          <td><strong>RxNorm</strong></td>
+          <td>U.S. National Library of Medicine (NIH)</td>
+          <td>Allergic Substance</td>
+          <td><span class="code">70618</span></td>
+          <td>Penicillin (Beta-lactam allergen)</td>
+        </tr>
+        <tr>
+          <td><strong>LOINC</strong></td>
+          <td>Regenstrief Institute / NIH</td>
+          <td>Laboratory Tests</td>
+          <td><span class="code">4548-4</span></td>
+          <td>Hemoglobin A1c/Hemoglobin.total in Blood</td>
+        </tr>
+        <tr>
+          <td><strong>UCUM</strong></td>
+          <td>Unified Code for Units of Measure / NIH</td>
+          <td>Measurement Units</td>
+          <td><span class="code">%</span>, <span class="code">mg/dL</span></td>
+          <td>Standardized UCUM percentage & concentration</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Step 4 -->
+  <div class="step-card">
+    <h3><span class="badge badge-green">STEP 4</span> FHIR Packaging & Clean Database Storage</h3>
+    <p>Before persistence, all coded entities are wrapped in the international <strong>HL7 FHIR (Fast Healthcare Interoperability Resources) JSON standard</strong>:</p>
+    <ul>
+      <li><span class="code">Condition</span> resource holding ICD-11 codes.</li>
+      <li><span class="code">MedicationRequest</span> resource holding RxNorm codes.</li>
+      <li><span class="code">Observation</span> resource holding LOINC test codes + UCUM unit validation.</li>
+      <li><span class="code">AllergyIntolerance</span> resource holding drug allergy codes.</li>
+    </ul>
+    <p>This standardized FHIR record is then saved permanently into the <strong>PostgreSQL Database (<span class="code">147.93.30.32:5435</span>)</strong> under the <span class="code">patients</span> table.</p>
+  </div>
+
+  <!-- Step 5 -->
+  <div class="step-card">
+    <h3><span class="badge badge-red">STEP 5</span> AI Analyzes Past + Present (Contradiction Radar)</h3>
+    <p>The system evaluates the patient's entire longitudinal medical history against today's present complaint:</p>
+    
+    <div class="alert-box">
+      <strong>🚨 ACTIVE RADAR CONTRADICTION WARNING (CRITICAL):</strong><br>
+      • <strong>Conflict:</strong> Patient has a recorded Penicillin allergy (RxNorm: 70618).<br>
+      • <strong>Action:</strong> ⛔ <strong>BLOCKED:</strong> Any prescription of Amoxicillin, Ampicillin, or Penicillin derivatives is strictly prohibited due to lethal anaphylactic shock risk.<br>
+      • <strong>Conflict 2:</strong> Patient takes Sildenafil (RxNorm: 136443). Organic nitrates (Nitroglycerin) are completely blocked.
+    </div>
+
+    <div class="success-box">
+      <strong>💡 GOOGLE GEMINI CLINICAL SYNTHESIS & SAFE PLAN:</strong><br>
+      • <strong>Differential Diagnosis:</strong> Acute Bacterial Bronchitis / Early Pneumonia (ICD-11: CA40).<br>
+      • <strong>Safe Recommended Treatment:</strong> Prescribe <strong>Azithromycin 500mg Oral Tablet</strong> (macrolide antibiotic, 100% safe for penicillin-allergic patients) + Paracetamol 650mg for fever.<br>
+      • <strong>Clinical Advisory:</strong> Monitor fasting glucose, as acute infection causes temporary glycemic spikes in diabetic patients.
+    </div>
+  </div>
+
+  <!-- Step 6 -->
+  <div class="step-card">
+    <h3><span class="badge badge-purple">STEP 6</span> Show to Doctor (Doctor Intelligence Workspace)</h3>
+    <p>The clinical findings are presented in an intuitive UI designed specifically for physician workflow:</p>
+    <ul>
+      <li><strong>Patient Demographics & Vitals Banner:</strong> Displays BP (145/95), Temp (102°F), SpO2 (98%).</li>
+      <li><strong>Hazard Warnings:</strong> Prominently highlights the active Penicillin allergy and blocked drugs.</li>
+      <li><strong>AI Proposed Plan:</strong> Presents the suggested safe medication (Azithromycin 500mg) with clinical rationale and citations.</li>
+    </ul>
+  </div>
+
+  <!-- Step 7 -->
+  <div class="step-card">
+    <h3><span class="badge badge-blue">STEP 7</span> Doctor Decides Next (Human Final Clinical Signature)</h3>
+    <p>The AI never acts autonomously. The licensed physician has ultimate clinical responsibility and selects one of three actions:</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Doctor Action</th>
+          <th>Clinical Description</th>
+          <th>Database Action Triggered</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong style="color: #16a34a;">✅ 1. ACCEPT</strong></td>
+          <td>Doctor agrees fully with AI diagnosis and treatment proposal.</td>
+          <td>Signs Azithromycin prescription; status recorded as <span class="code">VERIFIED</span>.</td>
+        </tr>
+        <tr>
+          <td><strong style="color: #d97706;">✏️ 2. MODIFY</strong></td>
+          <td>Doctor adjusts dosage (e.g. 250mg) or selects a different safe antibiotic.</td>
+          <td>Saves modified prescription with doctor's clinical reasoning notes.</td>
+        </tr>
+        <tr>
+          <td><strong style="color: #dc2626;">❌ 3. REJECT</strong></td>
+          <td>Doctor diagnoses viral illness and decides no antibiotic is needed.</td>
+          <td>Records override reason in audit ledger; feeds into continuous learning loop.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="box">
+      <strong>PostgreSQL Audit Record:</strong> The finalized decision is saved into table <span class="code">clinical_decisions</span> and table <span class="code">evidence_ledger</span> with physician signature, timestamp, and audit trail.
+    </div>
+  </div>
+
+  <h2>3. Summary Checklist of the 5 Healthcare Standards</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Standard</th>
+        <th>Full Name</th>
+        <th>Role in EN NANBA</th>
+        <th>API Status in Platform</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>ICD-11</strong></td>
+        <td>International Classification of Diseases (11th Rev)</td>
+        <td>Standardizes Disease Diagnoses</td>
+        <td><span class="badge badge-green">LIVE (WHO Geneva)</span></td>
+      </tr>
+      <tr>
+        <td><strong>RxNorm</strong></td>
+        <td>Normalized Names for Clinical Drugs</td>
+        <td>Standardizes Medicines & Allergens</td>
+        <td><span class="badge badge-green">LIVE (NIH RxNav)</span></td>
+      </tr>
+      <tr>
+        <td><strong>LOINC</strong></td>
+        <td>Logical Observation Identifiers Names & Codes</td>
+        <td>Standardizes Lab Tests, Vitals & Scans</td>
+        <td><span class="badge badge-green">LIVE (NIH Tables)</span></td>
+      </tr>
+      <tr>
+        <td><strong>UCUM</strong></td>
+        <td>Unified Code for Units of Measure</td>
+        <td>Standardizes Clinical Measurement Units</td>
+        <td><span class="badge badge-green">LIVE (NIH UCUM)</span></td>
+      </tr>
+      <tr>
+        <td><strong>FHIR</strong></td>
+        <td>Fast Healthcare Interoperability Resources</td>
+        <td>Packages Standardized Data for Hospital EHRs</td>
+        <td><span class="badge badge-green">ACTIVE BUNDLER</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="footer">
+    EN NANBA Clinical Intelligence Platform &bull; Proprietary & Confidential &bull; ROACS Technologies Pvt Ltd &bull; 2026
+  </div>
+
+</body>
+</html>

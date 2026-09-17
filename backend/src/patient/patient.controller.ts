@@ -1,14 +1,6 @@
 import { Controller, Get, Post, Put, Param, Body } from '@nestjs/common';
 import { PatientService } from './patient.service';
-import {
-  ClinicalDecisionDto,
-  CreatePatientDto,
-  UpdatePatientDto,
-  PatientIntakeDto,
-  DoctorLoginDto,
-  PatientLoginDto,
-  PatientSignupDto,
-} from '../common/dto/clinical.dto';
+import { ClinicalDecisionDto, CreatePatientDto } from '../common/dto/clinical.dto';
 
 @Controller('api')
 export class PatientController {
@@ -50,6 +42,11 @@ export class PatientController {
   @Get('patients')
   getAllPatients() {
     return this.patientService.getAllPatients();
+  }
+
+  @Post('patients')
+  createPatient(@Body() dto: CreatePatientDto) {
+    return this.patientService.createPatient(dto);
   }
 
   @Get('patients/:id')
