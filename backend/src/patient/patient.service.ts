@@ -170,7 +170,10 @@ export class PatientService {
       ...dto,
       fullName: dto.fullName || user.fullName,
       phone: dto.phone || user.phone || '+91 99999 99999',
-    });
+      age: dto.age ?? 30,
+      gender: dto.gender || 'Other',
+      dob: dto.dob || '1990-01-01',
+    } as CreatePatientDto);
 
     // Link patient to user account and mark onboarding as complete
     user.patientId = createdPatient.id;
@@ -214,25 +217,6 @@ export class PatientService {
     return patient;
   }
 
-  async createPatient(dto: any): Promise<PatientProfile> {
-    const patient: PatientProfile = {
-      id: dto.id,
-      enNanbaId: dto.enNanbaId,
-      fullName: dto.fullName,
-      age: Number(dto.age),
-      gender: dto.gender,
-      dob: dto.dob,
-      phone: dto.phone,
-      bloodType: dto.bloodType || 'Unknown',
-      chronicConditions: dto.chronicConditions || [],
-      allergies: dto.allergies || [],
-      vitals: dto.vitals || { bloodPressure: '120/80 mmHg', heartRate: 72, oxygenSaturation: 98, bmi: 22 },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    return this.postgresService.savePatient(patient);
-  }
-
   async getPatientEvidenceLedger(patientId: string): Promise<EvidenceLedgerEntry[]> {
     return this.postgresService.getEvidenceLedger(patientId);
   }
@@ -241,8 +225,8 @@ export class PatientService {
   async createPatient(dto: CreatePatientDto): Promise<PatientProfile> {
     const allPatients = await this.postgresService.getPatients();
     const nextNum = allPatients.length + 1001;
-    const patientId = dto.patientId || `P-${nextNum}`;
-    const enNanbaId = `EN-IND-2026-${Math.floor(10000 + Math.random() * 90000)}`;
+    const patientId = dto.patientId || dto.id || `P-${nextNum}`;
+    const enNanbaId = dto.enNanbaId || `EN-IND-2026-${Math.floor(10000 + Math.random() * 90000)}`;
 
     const newPatient: PatientProfile = {
       id: patientId,
@@ -252,7 +236,7 @@ export class PatientService {
       gender: dto.gender,
       dob: dto.dob,
       phone: dto.phone,
-      bloodType: dto.bloodType,
+      bloodType: dto.bloodType || 'Unknown',
       chronicConditions: dto.chronicConditions || [],
       allergies: dto.allergies || [],
       vitals: {
@@ -290,8 +274,9 @@ export class PatientService {
   // Update existing patient
   async updatePatient(id: string, dto: UpdatePatientDto): Promise<PatientProfile> {
     const existing = await this.getPatientById(id);
+    const { currentMedications, symptomsNotes, ...patientUpdates } = dto;
     const updated = await this.postgresService.updatePatient(id, {
-      ...dto,
+      ...patientUpdates,
       vitals: dto.vitals ? { ...existing.vitals, ...dto.vitals } : existing.vitals,
     });
 
@@ -335,7 +320,7 @@ export class PatientService {
       }
     }
 
-    const created = await this.createPatient(dto);
+    const created = await this.createPatient(dto as CreatePatientDto);
     return {
       patient: created,
       isNew: true,

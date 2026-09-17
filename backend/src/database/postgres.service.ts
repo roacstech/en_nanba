@@ -23,10 +23,63 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
   private inMemoryDecisions: ClinicalDecisionPayload[] = [];
   private inMemoryAuditLogs: Array<{ id: string; action: string; details: any; timestamp: string }> = [];
 
-  constructor(private configService: ConfigService) {}
-
   hashPassword(password: string): string {
     return crypto.createHash('sha256').update(password).digest('hex');
+  }
+
+  getDefaultDoctor(): UserAccount {
+    return {
+      id: 'USR-DOC-001',
+      email: 'doctor@ennanba.ai',
+      passwordHash: this.hashPassword('doctor123'),
+      role: 'doctor',
+      fullName: 'Dr. Aravind Swamy, MD (Cardiology)',
+      phone: '+91 98400 11223',
+      specialization: 'Chief Cardiologist & Critical Care',
+      hospitalId: 'CMC-CARD-001',
+      isIntakeCompleted: true,
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2026-09-17T10:00:00Z',
+    };
+  }
+
+  getDefaultPatient1(): UserAccount {
+    return {
+      id: 'USR-PAT-1001',
+      email: 'rajesh.kumar@example.com',
+      passwordHash: this.hashPassword('patient123'),
+      role: 'patient',
+      fullName: 'Rajesh Kumar',
+      phone: '+91 98401 23456',
+      patientId: 'P-1001',
+      isIntakeCompleted: true,
+      createdAt: '2024-01-10T08:00:00Z',
+      updatedAt: '2026-09-14T10:30:00Z',
+    };
+  }
+
+  getDefaultPatient2(): UserAccount {
+    return {
+      id: 'USR-PAT-1002',
+      email: 'priya.sharma@example.com',
+      passwordHash: this.hashPassword('patient123'),
+      role: 'patient',
+      fullName: 'Priya Sharma',
+      phone: '+91 98402 78901',
+      patientId: 'P-1002',
+      isIntakeCompleted: true,
+      createdAt: '2024-06-15T09:00:00Z',
+      updatedAt: '2026-09-15T08:15:00Z',
+    };
+  }
+
+  constructor(private configService: ConfigService) {
+    const doc = this.getDefaultDoctor();
+    const p1 = this.getDefaultPatient1();
+    const p2 = this.getDefaultPatient2();
+    this.inMemoryUsers.set(doc.id, doc);
+    this.inMemoryUsers.set(p1.id, p1);
+    this.inMemoryUsers.set(p2.id, p2);
   }
 
   async onModuleInit() {
@@ -285,6 +338,51 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
       }
     );
 
+    // Seed default users
+    const defaultDoctor: UserAccount = {
+      id: 'USR-DOC-001',
+      email: 'doctor@ennanba.ai',
+      passwordHash: this.hashPassword('doctor123'),
+      role: 'doctor',
+      fullName: 'Dr. Aravind Swamy, MD (Cardiology)',
+      phone: '+91 98400 11223',
+      specialization: 'Chief Cardiologist & Critical Care',
+      hospitalId: 'CMC-CARD-001',
+      isIntakeCompleted: true,
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2026-09-17T10:00:00Z',
+    };
+
+    const defaultPatient1: UserAccount = {
+      id: 'USR-PAT-1001',
+      email: 'rajesh.kumar@example.com',
+      passwordHash: this.hashPassword('patient123'),
+      role: 'patient',
+      fullName: 'Rajesh Kumar',
+      phone: '+91 98401 23456',
+      patientId: 'P-1001',
+      isIntakeCompleted: true,
+      createdAt: '2024-01-10T08:00:00Z',
+      updatedAt: '2026-09-14T10:30:00Z',
+    };
+
+    const defaultPatient2: UserAccount = {
+      id: 'USR-PAT-1002',
+      email: 'priya.sharma@example.com',
+      passwordHash: this.hashPassword('patient123'),
+      role: 'patient',
+      fullName: 'Priya Sharma',
+      phone: '+91 98402 78901',
+      patientId: 'P-1002',
+      isIntakeCompleted: true,
+      createdAt: '2024-06-15T09:00:00Z',
+      updatedAt: '2026-09-15T08:15:00Z',
+    };
+
+    for (const u of [defaultDoctor, defaultPatient1, defaultPatient2]) {
+      this.inMemoryUsers.set(u.id, u);
+    }
+
     // If connected to live PostgreSQL, seed tables
     if (this.isConnected && this.pool) {
       try {
@@ -304,7 +402,15 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
             [ev.id, ev.patientId, ev.claim, ev.sourceDocument, ev.statusTag, ev.confidenceScore, ev.clinicalSignificance],
           );
         }
-        this.logger.log('Live PostgreSQL populated with default patients and evidence ledger entries.');
+        for (const u of [defaultDoctor, defaultPatient1, defaultPatient2]) {
+          await this.pool.query(
+            `INSERT INTO users (id, email, password_hash, role, full_name, phone, patient_id, is_intake_completed, specialization, hospital_id)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+             ON CONFLICT (id) DO NOTHING`,
+            [u.id, u.email, u.passwordHash, u.role, u.fullName, u.phone, u.patientId, u.isIntakeCompleted, u.specialization, u.hospitalId],
+          );
+        }
+        this.logger.log('Live PostgreSQL populated with default patients, evidence ledger entries, and users.');
       } catch (err: any) {
         this.logger.warn(`Failed to seed PostgreSQL tables: ${err.message}`);
       }
@@ -340,9 +446,185 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
         }
         this.logger.log(`Loaded ${this.inMemoryPatients.size} patient profiles from PostgreSQL.`);
       }
+
+      // Sync users from DB
+      const userRes = await this.pool.query('SELECT * FROM users');
+      if (userRes.rows.length > 0) {
+        for (const r of userRes.rows) {
+          this.inMemoryUsers.set(r.id, this.mapUserRow(r));
+        }
+        this.logger.log(`Loaded ${this.inMemoryUsers.size} user accounts from PostgreSQL.`);
+      } else {
+        // Table was empty - seed default users into PostgreSQL
+        for (const u of [this.getDefaultDoctor(), this.getDefaultPatient1(), this.getDefaultPatient2()]) {
+          await this.pool.query(
+            `INSERT INTO users (id, email, password_hash, role, full_name, phone, patient_id, is_intake_completed, specialization, hospital_id)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+             ON CONFLICT (id) DO NOTHING`,
+            [u.id, u.email, u.passwordHash, u.role, u.fullName, u.phone, u.patientId, u.isIntakeCompleted, u.specialization, u.hospitalId],
+          );
+        }
+        this.logger.log('Seeded default doctor and patient users into PostgreSQL.');
+      }
     } catch (err: any) {
-      this.logger.error(`Failed to sync patients from DB: ${err.message}`);
+      this.logger.error(`Failed to sync patients/users from DB: ${err.message}`);
     }
+  }
+
+  // User Management
+  private mapUserRow(r: any): UserAccount {
+    return {
+      id: r.id,
+      email: r.email,
+      passwordHash: r.password_hash,
+      role: r.role,
+      fullName: r.full_name,
+      phone: r.phone || undefined,
+      patientId: r.patient_id || undefined,
+      isIntakeCompleted: Boolean(r.is_intake_completed),
+      specialization: r.specialization || undefined,
+      hospitalId: r.hospital_id || undefined,
+      createdAt: r.created_at?.toISOString?.() || r.created_at,
+      updatedAt: r.updated_at?.toISOString?.() || r.updated_at,
+    };
+  }
+
+  async getUserByEmail(email: string): Promise<UserAccount | null> {
+    const normalizedEmail = (email || '').trim().toLowerCase();
+    if (!normalizedEmail) return null;
+
+    if (this.isConnected && this.pool) {
+      try {
+        const res = await this.pool.query(
+          'SELECT * FROM users WHERE LOWER(email) = $1 OR LOWER(hospital_id) = $1 LIMIT 1',
+          [normalizedEmail],
+        );
+        if (res.rows.length > 0) {
+          return this.mapUserRow(res.rows[0]);
+        }
+      } catch (e: any) {
+        this.logger.error(`Error querying user by email: ${e.message}`);
+      }
+    }
+
+    for (const user of this.inMemoryUsers.values()) {
+      if (
+        user.email.toLowerCase() === normalizedEmail ||
+        user.hospitalId?.toLowerCase() === normalizedEmail
+      ) {
+        return user;
+      }
+    }
+
+    // Fail-safe default doctor fallback
+    if (normalizedEmail === 'doctor@ennanba.ai' || normalizedEmail === 'cmc-card-001') {
+      const doc = this.getDefaultDoctor();
+      this.inMemoryUsers.set(doc.id, doc);
+      return doc;
+    }
+
+    return null;
+  }
+
+  async getUserByIdentifier(identifier: string): Promise<UserAccount | null> {
+    const cleanId = (identifier || '').trim();
+    if (!cleanId) return null;
+    const lowerId = cleanId.toLowerCase();
+
+    if (this.isConnected && this.pool) {
+      try {
+        const res = await this.pool.query(
+          'SELECT * FROM users WHERE LOWER(email) = $1 OR phone = $2 OR id = $3 OR patient_id = $3 LIMIT 1',
+          [lowerId, cleanId, cleanId],
+        );
+        if (res.rows.length > 0) {
+          return this.mapUserRow(res.rows[0]);
+        }
+      } catch (e: any) {
+        this.logger.error(`Error querying user by identifier: ${e.message}`);
+      }
+    }
+
+    for (const user of this.inMemoryUsers.values()) {
+      if (
+        user.email.toLowerCase() === lowerId ||
+        user.phone?.trim() === cleanId ||
+        user.id === cleanId ||
+        user.patientId === cleanId
+      ) {
+        return user;
+      }
+    }
+
+    // Fail-safe default patient fallback
+    if (lowerId === 'rajesh.kumar@example.com' || cleanId === '+91 98401 23456' || cleanId === 'P-1001') {
+      const p = this.getDefaultPatient1();
+      this.inMemoryUsers.set(p.id, p);
+      return p;
+    }
+    if (lowerId === 'priya.sharma@example.com' || cleanId === '+91 98402 78901' || cleanId === 'P-1002') {
+      const p = this.getDefaultPatient2();
+      this.inMemoryUsers.set(p.id, p);
+      return p;
+    }
+
+    return null;
+  }
+
+  async getUserById(id: string): Promise<UserAccount | null> {
+    if (!id) return null;
+    if (this.isConnected && this.pool) {
+      try {
+        const res = await this.pool.query('SELECT * FROM users WHERE id = $1 LIMIT 1', [id]);
+        if (res.rows.length > 0) {
+          return this.mapUserRow(res.rows[0]);
+        }
+      } catch (e: any) {
+        this.logger.error(`Error querying user by id: ${e.message}`);
+      }
+    }
+    return this.inMemoryUsers.get(id) || null;
+  }
+
+  async saveUser(user: UserAccount): Promise<UserAccount> {
+    this.inMemoryUsers.set(user.id, user);
+    if (this.isConnected && this.pool) {
+      try {
+        await this.pool.query(
+          `INSERT INTO users (id, email, password_hash, role, full_name, phone, patient_id, is_intake_completed, specialization, hospital_id, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+           ON CONFLICT (id) DO UPDATE SET
+             email = EXCLUDED.email,
+             password_hash = EXCLUDED.password_hash,
+             role = EXCLUDED.role,
+             full_name = EXCLUDED.full_name,
+             phone = EXCLUDED.phone,
+             patient_id = EXCLUDED.patient_id,
+             is_intake_completed = EXCLUDED.is_intake_completed,
+             specialization = EXCLUDED.specialization,
+             hospital_id = EXCLUDED.hospital_id,
+             updated_at = NOW()`,
+          [
+            user.id,
+            user.email.toLowerCase(),
+            user.passwordHash,
+            user.role,
+            user.fullName,
+            user.phone || null,
+            user.patientId || null,
+            user.isIntakeCompleted ?? false,
+            user.specialization || null,
+            user.hospitalId || null,
+            user.createdAt || new Date().toISOString(),
+            user.updatedAt || new Date().toISOString(),
+          ],
+        );
+      } catch (e: any) {
+        this.logger.error(`Error saving user to PostgreSQL: ${e.message}`);
+      }
+    }
+    this.logAudit('USER_SAVED', { userId: user.id, email: user.email, role: user.role });
+    return user;
   }
 
   // Patients CRUD

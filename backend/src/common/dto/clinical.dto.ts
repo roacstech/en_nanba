@@ -1,7 +1,7 @@
 import { IsString, IsNotEmpty, IsOptional, IsEnum, IsArray, IsEmail } from 'class-validator';
 
 export class DoctorLoginDto {
-  @IsEmail()
+  @IsString()
   @IsNotEmpty()
   email: string;
 
@@ -111,12 +111,16 @@ export class RunReasoningDto {
 
 export class CreatePatientDto {
   @IsString()
-  @IsNotEmpty()
-  id: string;
+  @IsOptional()
+  id?: string;
 
   @IsString()
-  @IsNotEmpty()
-  enNanbaId: string;
+  @IsOptional()
+  patientId?: string;
+
+  @IsString()
+  @IsOptional()
+  enNanbaId?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -151,4 +155,108 @@ export class CreatePatientDto {
 
   @IsOptional()
   vitals?: Record<string, any>;
+
+  @IsArray()
+  @IsOptional()
+  currentMedications?: string[];
+
+  @IsString()
+  @IsOptional()
+  symptomsNotes?: string;
+}
+
+export class UpdatePatientDto {
+  @IsString()
+  @IsOptional()
+  patientId?: string;
+
+  @IsString()
+  @IsOptional()
+  fullName?: string;
+
+  @IsOptional()
+  age?: number;
+
+  @IsString()
+  @IsOptional()
+  gender?: 'M' | 'F' | 'Other';
+
+  @IsString()
+  @IsOptional()
+  dob?: string;
+
+  @IsString()
+  @IsOptional()
+  phone?: string;
+
+  @IsString()
+  @IsOptional()
+  bloodType?: string;
+
+  @IsArray()
+  @IsOptional()
+  chronicConditions?: string[];
+
+  @IsArray()
+  @IsOptional()
+  allergies?: string[];
+
+  @IsOptional()
+  vitals?: Record<string, any>;
+
+  @IsArray()
+  @IsOptional()
+  currentMedications?: string[];
+
+  @IsString()
+  @IsOptional()
+  symptomsNotes?: string;
+}
+
+export class PatientIntakeDto {
+  @IsString()
+  @IsOptional()
+  patientId?: string;
+
+  @IsString()
+  @IsOptional()
+  fullName?: string;
+
+  @IsOptional()
+  age?: number;
+
+  @IsString()
+  @IsOptional()
+  gender?: 'M' | 'F' | 'Other';
+
+  @IsString()
+  @IsOptional()
+  dob?: string;
+
+  @IsString()
+  @IsOptional()
+  phone?: string;
+
+  @IsString()
+  @IsOptional()
+  bloodType?: string;
+
+  @IsArray()
+  @IsOptional()
+  chronicConditions?: string[];
+
+  @IsArray()
+  @IsOptional()
+  allergies?: string[];
+
+  @IsOptional()
+  vitals?: Record<string, any>;
+
+  @IsArray()
+  @IsOptional()
+  currentMedications?: string[];
+
+  @IsString()
+  @IsOptional()
+  symptomsNotes?: string;
 }
