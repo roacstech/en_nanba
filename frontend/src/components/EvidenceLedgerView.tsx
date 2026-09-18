@@ -13,6 +13,21 @@ export const EvidenceLedgerView: React.FC<EvidenceLedgerViewProps> = ({
   entries,
   isLoading,
 }) => {
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const itemsPerPage = 5;
+  const totalPages = Math.ceil(entries.length / itemsPerPage);
+
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentEntries = entries.slice(startIndex, startIndex + itemsPerPage);
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) setCurrentPage(currentPage - 1);
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+  };
+
   const getStatusBadge = (tag: string) => {
     switch (tag) {
       case 'verified':
@@ -78,7 +93,7 @@ export const EvidenceLedgerView: React.FC<EvidenceLedgerViewProps> = ({
             No claims recorded yet in the Evidence Ledger.
           </div>
         ) : (
-          entries.map(item => (
+          currentEntries.map(item => (
             <div
               key={item.id}
               className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/90 text-xs hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
@@ -112,6 +127,34 @@ export const EvidenceLedgerView: React.FC<EvidenceLedgerViewProps> = ({
           ))
         )}
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-200 dark:border-slate-800">
+          <span className="text-xs text-slate-500 dark:text-slate-400">
+            Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, entries.length)} of {entries.length} entries
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handlePrevPage}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
+            >
+              Previous
+            </button>
+            <span className="text-xs font-medium text-slate-700 dark:text-slate-300 mx-2">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              onClick={handleNextPage}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

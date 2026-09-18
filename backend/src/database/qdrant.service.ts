@@ -94,6 +94,7 @@ export class QdrantService implements OnModuleInit {
   }
 
   // Semantic similarity search across medical dictionary embeddings
+  
   async searchTerminology(query: string, systemFilter?: string, limit: number = 5): Promise<MedicalCode[]> {
     const cleanQuery = query.toLowerCase().replace(/[^a-z0-9]/g, '');
     const queryVector = this.generateSemanticEmbedding(query);

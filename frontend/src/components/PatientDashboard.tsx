@@ -97,10 +97,8 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
   const [allergyInput, setAllergyInput] = useState('');
   const [conditionInput, setConditionInput] = useState('');
   const [medicationInput, setMedicationInput] = useState('');
-  const [pastDiseaseYear, setPastDiseaseYear] = useState('2025');
-  const [pastDiseaseCondition, setPastDiseaseCondition] = useState('');
-  const [pastDiseaseStatus, setPastDiseaseStatus] = useState('Post-treatment surveillance / Stable');
-
+  const [ledgerPage, setLedgerPage] = useState(1);
+  const ledgerItemsPerPage = 5;
   // Sync form when active patient changes
   useEffect(() => {
     if (patient) {
@@ -278,41 +276,41 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
       {/* Toast Notification */}
       {toastMessage && (
         <div
-          className={`p-4 rounded-2xl flex items-center justify-between text-sm font-semibold shadow-lg transition-all animate-fadeIn ${
+          className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-2xl p-4 rounded-xl flex items-center justify-between text-sm font-semibold shadow-2xl transition-all animate-fadeIn ${
             toastMessage.type === 'success'
               ? 'bg-emerald-600 text-white'
               : 'bg-rose-600 text-white'
           }`}
         >
-          <div className="flex items-center gap-2">
-            {toastMessage.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+          <div className="flex items-center gap-3">
+            {toastMessage.type === 'success' ? <CheckCircle2 className="w-5 h-5 flex-shrink-0" /> : <AlertTriangle className="w-5 h-5 flex-shrink-0" />}
             <span>{toastMessage.text}</span>
           </div>
-          <button onClick={() => setToastMessage(null)} className="text-white/80 hover:text-white text-xs">
-            Dismiss
+          <button onClick={() => setToastMessage(null)} className="text-white/80 hover:text-white p-1 rounded-md hover:bg-black/10 transition-colors ml-4 flex-shrink-0">
+            <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
       {/* Patient Digital Health Header Banner */}
       {patient && (
-        <div className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 dark:border-slate-800 relative overflow-hidden">
+        <div className="pro-card p-6 md:p-8 relative">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
             {/* Left: Demographics */}
             <div className="flex items-start gap-5">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-extrabold text-2xl shadow-md shadow-blue-500/20">
-                {patient.fullName.slice(0, 2).toUpperCase()}
+              <div className="w-16 h-16 rounded-xl bg-slate-800 dark:bg-slate-700 flex items-center justify-center text-white font-medium text-xl shadow-sm">
+                <User className="w-8 h-8 text-white/80" />
               </div>
 
               <div>
                 <div className="flex flex-wrap items-center gap-2.5">
-                  <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">{patient.fullName}</h1>
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-mono">
+                  <h1 className="text-2xl font-medium tracking-tight text-slate-900 dark:text-white">{patient.fullName}</h1>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-mono">
                     {patient.enNanbaId}
                   </span>
-                  <span className="px-2 py-0.5 rounded-md text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                  {/* <span className="px-2 py-0.5 rounded-md text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                     Patient Portal
-                  </span>
+                  </span> */}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-4 text-xs text-slate-600 dark:text-slate-400 mt-2">
@@ -320,7 +318,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
                   <span>•</span>
                   <span>Gender: <strong className="text-slate-800 dark:text-slate-200">{patient.gender === 'M' ? 'Male' : patient.gender === 'F' ? 'Female' : 'Other'}</strong></span>
                   <span>•</span>
-                  <span>Blood: <strong className="text-rose-600 dark:text-rose-400 font-bold">{patient.bloodType}</strong></span>
+                  <span>Blood: <strong className="text-rose-600 dark:text-rose-400 font-medium">{patient.bloodType}</strong></span>
                   <span>•</span>
                   <span>DOB: <strong className="text-slate-800 dark:text-slate-200">{patient.dob}</strong></span>
                   <span>•</span>
@@ -329,11 +327,10 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
               </div>
             </div>
 
-            {/* Right: Actions */}
             <div className="flex flex-wrap items-center gap-3">
               <button
                 onClick={() => window.print()}
-                className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-blue-500/20 transition-all cursor-pointer"
+                className="px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
                 title="Print Clinical Summary"
               >
                 <Printer className="w-4 h-4" /> Print Report
@@ -344,32 +341,30 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
       )}
 
       {/* Patient Portal Navigation Tabs */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+      <div className="flex flex-wrap items-center gap-6 border-b border-slate-200 dark:border-slate-800 mt-6">
         <button
           onClick={() => setActiveTab('report')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
-            activeTab === 'report'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900'
-          }`}
+          className={`pb-3 text-sm font-semibold flex items-center gap-2 transition-colors cursor-pointer border-b-2 -mb-[1px] ${activeTab === 'report'
+              ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+              : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-700'
+            }`}
         >
           <FileCheck className="w-4 h-4" /> My Health Records & Reports
         </button>
 
         <button
           onClick={() => setActiveTab('ledger')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
-            activeTab === 'ledger'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900'
-          }`}
+          className={`pb-3 text-sm font-semibold flex items-center gap-2 transition-colors cursor-pointer border-b-2 -mb-[1px] ${activeTab === 'ledger'
+              ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+              : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-700'
+            }`}
         >
-          <Clock className="w-4 h-4" /> Care History & Evidence Ledger ({report?.evidenceRecords?.length || 0})
+          <Clock className="w-4 h-4" /> Care History ({report?.evidenceRecords?.length || 0})
         </button>
 
         <button
           onClick={loadReport}
-          className="ml-auto p-2 rounded-xl text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors text-xs flex items-center gap-1 cursor-pointer"
+          className="ml-auto p-2 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-xs flex items-center gap-1 cursor-pointer"
           title="Refresh Reports"
         >
           <RefreshCw className="w-3.5 h-3.5" />
@@ -395,10 +390,10 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-500 text-white">
+                      <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-rose-500 text-white">
                         CRITICAL SAFETY ALERT
                       </span>
-                      <h3 className="font-bold text-sm text-rose-900 dark:text-rose-200">
+                      <h3 className="font-medium text-sm text-rose-900 dark:text-rose-200">
                         {report.safetyRadarAlerts[0].ruleName}
                       </h3>
                     </div>
@@ -414,108 +409,102 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
 
               {/* 1. Vitals Status Dashboard Cards */}
               <div>
-                <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2">
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2">
                   <Activity className="w-4 h-4 text-teal-500" /> Current Vitals & Health Indicators
                 </h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                   {/* Blood Pressure */}
-                  <div className={`p-4 rounded-2xl border transition-all ${
-                    report.vitalsAnalysis.bloodPressure.isAlert
-                      ? 'bg-rose-50/70 dark:bg-rose-950/20 border-rose-300 dark:border-rose-900'
-                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
-                  }`}>
-                    <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-1 font-medium">
-                      <span>Blood Pressure</span>
-                      <Activity className="w-3.5 h-3.5 text-rose-500" />
+                  <div className="p-4 rounded-xl shadow-sm text-white bg-[#638ff4] relative overflow-hidden">
+                    <div className="flex items-center justify-between mb-2 opacity-90">
+                      <span className="text-xs font-semibold uppercase tracking-wide">Blood Pressure</span>
+                      <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
+                        <Activity className="w-4 h-4 text-[#638ff4]" />
+                      </div>
                     </div>
-                    <p className="text-xl font-black text-slate-900 dark:text-white">
-                      {report.vitalsAnalysis.bloodPressure.value}
-                    </p>
-                    <span className={`inline-block mt-2 px-2 py-0.5 rounded text-[10px] font-bold ${
-                      report.vitalsAnalysis.bloodPressure.isAlert
-                        ? 'bg-rose-500/20 text-rose-700 dark:text-rose-300'
-                        : 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
-                    }`}>
-                      {report.vitalsAnalysis.bloodPressure.category}
-                    </span>
-                    <p className="text-[10px] text-slate-400 mt-1">Target: &lt;120/80 mmHg</p>
+                    <p className="text-2xl font-medium mb-1">{report.vitalsAnalysis.bloodPressure.value}</p>
+                    <div className="flex items-center justify-between text-[10px] mt-3">
+                      <span className="px-2 py-1 rounded bg-white/25 font-medium">
+                        {report.vitalsAnalysis.bloodPressure.category}
+                      </span>
+                      <span className="opacity-80">Target: &lt;120/80</span>
+                    </div>
                   </div>
 
                   {/* Heart Rate */}
-                  <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                    <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-1 font-medium">
-                      <span>Heart Rate</span>
-                      <Heart className="w-3.5 h-3.5 text-rose-500" />
+                  <div className="p-4 rounded-xl shadow-sm text-white bg-[#48d298] relative overflow-hidden">
+                    <div className="flex items-center justify-between mb-2 opacity-90">
+                      <span className="text-xs font-semibold uppercase tracking-wide">Heart Rate</span>
+                      <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
+                        <Heart className="w-4 h-4 text-[#48d298]" />
+                      </div>
                     </div>
-                    <p className="text-xl font-black text-slate-900 dark:text-white">
-                      {report.vitalsAnalysis.heartRate.value}
-                    </p>
-                    <span className="inline-block mt-2 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">
-                      {report.vitalsAnalysis.heartRate.category}
-                    </span>
-                    <p className="text-[10px] text-slate-400 mt-1">Normal: 60–100 bpm</p>
+                    <p className="text-2xl font-medium mb-1">{report.vitalsAnalysis.heartRate.value}</p>
+                    <div className="flex items-center justify-between text-[10px] mt-3">
+                      <span className="px-2 py-1 rounded bg-white/25 font-medium">
+                        {report.vitalsAnalysis.heartRate.category}
+                      </span>
+                      <span className="opacity-80">Normal: 60-100 bpm</span>
+                    </div>
                   </div>
 
                   {/* Blood Glucose */}
-                  <div className={`p-4 rounded-2xl border transition-all ${
-                    report.vitalsAnalysis.bloodGlucose.isAlert
-                      ? 'bg-amber-50/70 dark:bg-amber-950/20 border-amber-300 dark:border-amber-900'
-                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
-                  }`}>
-                    <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-1 font-medium">
-                      <span>Blood Glucose</span>
-                      <Droplet className="w-3.5 h-3.5 text-amber-500" />
+                  <div className="p-4 rounded-xl shadow-sm text-white bg-[#8b65f7] relative overflow-hidden">
+                    <div className="flex items-center justify-between mb-2 opacity-90">
+                      <span className="text-xs font-semibold uppercase tracking-wide">Blood Glucose</span>
+                      <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
+                        <Droplet className="w-4 h-4 text-[#8b65f7]" />
+                      </div>
                     </div>
-                    <p className="text-xl font-black text-slate-900 dark:text-white">
-                      {report.vitalsAnalysis.bloodGlucose.value}
-                    </p>
-                    <span className={`inline-block mt-2 px-2 py-0.5 rounded text-[10px] font-bold ${
-                      report.vitalsAnalysis.bloodGlucose.isAlert
-                        ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300'
-                        : 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
-                    }`}>
-                      {report.vitalsAnalysis.bloodGlucose.category}
-                    </span>
-                    <p className="text-[10px] text-slate-400 mt-1">Normal: 70–140 mg/dL</p>
+                    <p className="text-2xl font-medium mb-1">{report.vitalsAnalysis.bloodGlucose.value}</p>
+                    <div className="flex items-center justify-between text-[10px] mt-3">
+                      <span className="px-2 py-1 rounded bg-white/25 font-medium">
+                        {report.vitalsAnalysis.bloodGlucose.category}
+                      </span>
+                      <span className="opacity-80">Normal: 70-140 mg/dL</span>
+                    </div>
                   </div>
 
                   {/* Oxygen Saturation */}
-                  <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                    <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-1 font-medium">
-                      <span>Oxygen (SpO2)</span>
-                      <TrendingUp className="w-3.5 h-3.5 text-cyan-500" />
+                  <div className="p-4 rounded-xl shadow-sm text-white bg-[#24bdf3] relative overflow-hidden">
+                    <div className="flex items-center justify-between mb-2 opacity-90">
+                      <span className="text-xs font-semibold uppercase tracking-wide">Oxygen (SpO2)</span>
+                      <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
+                        <TrendingUp className="w-4 h-4 text-[#24bdf3]" />
+                      </div>
                     </div>
-                    <p className="text-xl font-black text-slate-900 dark:text-white">
-                      {report.vitalsAnalysis.oxygenSaturation.value}
-                    </p>
-                    <span className="inline-block mt-2 px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-700 dark:text-cyan-300">
-                      {report.vitalsAnalysis.oxygenSaturation.category}
-                    </span>
-                    <p className="text-[10px] text-slate-400 mt-1">Normal: 95–100%</p>
+                    <p className="text-2xl font-medium mb-1">{report.vitalsAnalysis.oxygenSaturation.value}</p>
+                    <div className="flex items-center justify-between text-[10px] mt-3">
+                      <span className="px-2 py-1 rounded bg-white/25 font-medium">
+                        {report.vitalsAnalysis.oxygenSaturation.category}
+                      </span>
+                      <span className="opacity-80">Normal: 95-100%</span>
+                    </div>
                   </div>
 
                   {/* BMI */}
-                  <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                    <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-1 font-medium">
-                      <span>Body Mass Index</span>
-                      <User className="w-3.5 h-3.5 text-indigo-500" />
+                  <div className="p-4 rounded-xl shadow-sm text-white bg-[#f38b63] relative overflow-hidden">
+                    <div className="flex items-center justify-between mb-2 opacity-90">
+                      <span className="text-xs font-semibold uppercase tracking-wide">BMI</span>
+                      <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
+                        <User className="w-4 h-4 text-[#f38b63]" />
+                      </div>
                     </div>
-                    <p className="text-xl font-black text-slate-900 dark:text-white">
-                      {report.vitalsAnalysis.bmi.value}
-                    </p>
-                    <span className="inline-block mt-2 px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/20 text-indigo-700 dark:text-indigo-300">
-                      {report.vitalsAnalysis.bmi.category}
-                    </span>
-                    <p className="text-[10px] text-slate-400 mt-1">Healthy range: 18.5–24.9</p>
+                    <p className="text-2xl font-medium mb-1">{report.vitalsAnalysis.bmi.value}</p>
+                    <div className="flex items-center justify-between text-[10px] mt-3">
+                      <span className="px-2 py-1 rounded bg-white/25 font-medium">
+                        {report.vitalsAnalysis.bmi.category}
+                      </span>
+                      <span className="opacity-80">Healthy: 18.5-24.9</span>
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* 2. Official Doctor Assessments & Prescriptions */}
-              <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+              <div className="pro-card p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
                     <Stethoscope className="w-4 h-4 text-blue-600" /> Official Doctor Reviews & Prescriptions
                   </h3>
                   <span className="text-xs text-slate-500">
@@ -524,168 +513,121 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
                 </div>
 
                 {report.doctorReviews && report.doctorReviews.length > 0 ? (
-                  <div className="space-y-4">
+                  <div className="relative border-l-2 border-slate-200 dark:border-slate-800 ml-4 mt-6 space-y-8 pb-4">
                     {report.doctorReviews.map((rev, idx) => (
                       <div
                         key={idx}
-                        className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-2.5"
+                        className="relative pl-6"
                       >
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-sm text-slate-900 dark:text-white">{rev.doctorName}</span>
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              rev.decision === 'ACCEPT'
-                                ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300'
-                                : rev.decision === 'MODIFY'
-                                ? 'bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300'
-                                : 'bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-300'
-                            }`}>
-                              Decision: {rev.decision}
-                            </span>
-                          </div>
-                          <span className="text-xs text-slate-500">{new Date(rev.timestamp).toLocaleDateString()}</span>
-                        </div>
+                        {/* Timeline Node */}
+                        <div className={`absolute -left-[9px] top-1.5 w-4 h-4 rounded-full border-2 bg-white dark:bg-slate-900 ${
+                          rev.decision === 'ACCEPT' ? 'border-emerald-500' :
+                          rev.decision === 'MODIFY' ? 'border-blue-500' : 'border-rose-500'
+                        }`} />
 
-                        {rev.reasoningNotes && (
-                          <p className="text-xs text-slate-600 dark:text-slate-300">
-                            <strong>Doctor Clinical Notes:</strong> {rev.reasoningNotes}
-                          </p>
-                        )}
-
-                        {rev.modifiedPrescription && (
-                          <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 text-xs text-blue-900 dark:text-blue-200 flex items-center gap-2">
-                            <Pill className="w-4 h-4 text-blue-600 shrink-0" />
-                            <div>
-                              <strong className="block">Prescription:</strong>
-                              <span>{rev.modifiedPrescription}</span>
+                        <div className="space-y-3">
+                          {/* Header: Name, Decision, Date */}
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-3">
+                              <span className="font-medium text-sm text-slate-900 dark:text-white">{rev.doctorName}</span>
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${rev.decision === 'ACCEPT'
+                                  ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300'
+                                  : rev.decision === 'MODIFY'
+                                    ? 'bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300'
+                                    : 'bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-300'
+                                }`}>
+                                Decision: {rev.decision}
+                              </span>
                             </div>
+                            <span className="text-xs font-semibold text-slate-400">{new Date(rev.timestamp).toLocaleDateString()}</span>
                           </div>
-                        )}
+
+                          {/* Clinical Notes */}
+                          {rev.reasoningNotes && (
+                            <div className="text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800/60">
+                              <strong className="text-slate-800 dark:text-slate-200">Clinical Notes:</strong> {rev.reasoningNotes}
+                            </div>
+                          )}
+
+                          {/* Prescription Block */}
+                          {rev.modifiedPrescription && (
+                            <div className="p-3 rounded-xl bg-[#00cba9]/10 border border-[#00cba9]/20 text-xs text-slate-700 dark:text-slate-200 flex items-start gap-2.5">
+                              <Pill className="w-4 h-4 text-[#00cba9] shrink-0 mt-0.5" />
+                              <div>
+                                <strong className="block text-[#00b597] dark:text-[#00cba9] mb-0.5">Prescribed Regimen:</strong>
+                                <span>{rev.modifiedPrescription}</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-400 italic">No formal doctor consultations submitted yet.</p>
+                  <div className="text-center p-8 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl mt-4">
+                    <p className="text-xs text-slate-500 font-medium">No formal doctor consultations submitted yet.</p>
+                  </div>
                 )}
               </div>
 
-              {/* 3. Chronic Conditions, Past Diseases & Drug Allergies Breakdown */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* 3A: Active Chronic Conditions */}
-                <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-                  <div>
-                    <h3 className="text-sm font-extrabold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
-                      <Activity className="w-4 h-4 text-blue-600" /> Active Diagnoses (ICD-11)
-                    </h3>
-                    {report.patient?.chronicConditions && report.patient.chronicConditions.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {report.patient.chronicConditions.map((cond, i) => (
-                          <span
-                            key={i}
-                            className="px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 text-xs font-semibold"
-                          >
-                            {cond}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-slate-400 italic">No chronic conditions reported.</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* 3B: Past Diseases & Medical History */}
-                <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-purple-600 dark:text-purple-400" /> Past Diseases & Prior History
-                      </h3>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
-                        {report.patient?.pastDiseases?.length || 0} Recorded
-                      </span>
+              {/* 3. Chronic Conditions & Drug Allergies Breakdown */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="pro-card p-6">
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-blue-600" /> Active Diagnoses & Chronic Conditions
+                  </h3>
+                  {report.patient?.chronicConditions && report.patient.chronicConditions.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {report.patient.chronicConditions.map((cond, i) => (
+                        <span
+                          key={i}
+                          className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-semibold"
+                        >
+                          {cond}
+                        </span>
+                      ))}
                     </div>
-
-                    {report.patient?.pastDiseases && report.patient.pastDiseases.length > 0 ? (
-                      <div className="space-y-2.5">
-                        {report.patient.pastDiseases.map((item, i) => {
-                          const year = typeof item === 'string' ? (item.match(/\b(19|20)\d{2}\b/)?.[0] || 'Prior') : item.year;
-                          const name = typeof item === 'string' ? item.replace(/\b(19|20)\d{2}\b/, '').trim() : item.condition;
-                          const status = typeof item === 'string' ? 'Historical' : (item.status || 'Resolved / Under Surveillance');
-                          const notes = typeof item === 'string' ? '' : item.notes;
-
-                          return (
-                            <div
-                              key={i}
-                              className="p-3 rounded-2xl bg-purple-50/70 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-900/60 flex flex-col gap-1"
-                            >
-                              <div className="flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-2">
-                                  <span className="px-2 py-0.5 rounded-md bg-purple-600 text-white font-black text-[11px] tracking-wide shadow-sm">
-                                    {year}
-                                  </span>
-                                  <span className="text-xs font-bold text-slate-900 dark:text-white">
-                                    {name}
-                                  </span>
-                                </div>
-                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-purple-200/70 dark:bg-purple-900/60 text-purple-800 dark:text-purple-200">
-                                  {status}
-                                </span>
-                              </div>
-                              {notes && (
-                                <p className="text-[10px] text-slate-500 dark:text-slate-400 pl-0.5 leading-snug">
-                                  {notes}
-                                </p>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-slate-400 italic">No past diseases recorded.</p>
-                    )}
-                  </div>
+                  ) : (
+                    <p className="text-xs text-slate-400 italic">No chronic conditions reported.</p>
+                  )}
                 </div>
 
-                {/* 3C: Known Allergies */}
-                <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-                  <div>
-                    <h3 className="text-sm font-extrabold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
-                      <ShieldAlert className="w-4 h-4 text-rose-500" /> Drug & Substance Allergies
-                    </h3>
-                    {report.patient?.allergies && report.patient.allergies.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {report.patient.allergies.map((allg, i) => (
-                          <span
-                            key={i}
-                            className="px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-xs font-semibold flex items-center gap-1.5"
-                          >
-                            <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
-                            {allg}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-slate-400 italic">No known allergies recorded.</p>
-                    )}
-                  </div>
+                <div className="pro-card p-6">
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                    <ShieldAlert className="w-4 h-4 text-rose-500" /> Drug & Substance Allergies
+                  </h3>
+                  {report.patient?.allergies && report.patient.allergies.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {report.patient.allergies.map((allg, i) => (
+                        <span
+                          key={i}
+                          className="px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-xs font-semibold flex items-center gap-1.5"
+                        >
+                          <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
+                          {allg}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400 italic">No known allergies recorded.</p>
+                  )}
                 </div>
               </div>
 
               {/* 4. Active Medications from Clinical Fabric */}
               {report.medications && report.medications.length > 0 && (
-                <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
-                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                <div className="pro-card p-6">
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
                     <Pill className="w-4 h-4 text-blue-600" /> Prescribed Medications (RxNorm Mapped)
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {report.medications.map((m, i) => (
                       <div
                         key={i}
-                        className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800"
+                        className="p-3 border-b border-slate-100 dark:border-slate-800/50 last:border-0"
                       >
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-xs text-slate-900 dark:text-white">{m.name}</span>
+                          <span className="font-medium text-xs text-slate-900 dark:text-white">{m.name}</span>
                           <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
                             RxNorm: {m.rxNormCode}
                           </span>
@@ -706,26 +648,26 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
       {/* MANDATORY PATIENT INTAKE FORM MODAL */}
       {isIntakeModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 backdrop-blur-sm overflow-y-auto animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 md:p-8 border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-5xl my-auto max-h-[92vh] overflow-y-auto relative flex flex-col">
+          <div className="bg-white dark:bg-slate-900 rounded-md p-6 md:p-8 border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-5xl my-auto max-h-[92vh] overflow-y-auto relative flex flex-col">
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200 dark:border-slate-800 sticky -top-6 md:-top-8 -mx-6 md:-mx-8 px-6 md:px-8 pt-4 pb-4 bg-white dark:bg-slate-900 z-20">
               <div>
-                <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+                <h2 className="text-xl font-medium text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
                   <Edit3 className="w-5 h-5 text-blue-600" /> Patient Mandatory Health Intake Form
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                {/* <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                   View and edit your demographic, physiological, and clinical data. Fields with{' '}
-                  <span className="text-rose-500 font-bold">*</span> are mandatory for clinical compliance.
-                </p>
+                  <span className="text-rose-500 font-medium">*</span> are mandatory for clinical compliance.
+                </p> */}
               </div>
               <div className="flex items-center gap-2">
-                <span className="hidden sm:inline-block px-3 py-1 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                  HIPAA & Zero-PHI Secured
+                <span className="hidden sm:inline-block px-3 py-1 rounded-sm text-xs font-medium bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                    Secured
                 </span>
                 <button
                   type="button"
                   onClick={handleCloseIntakeModal}
                   aria-label="Close Modal"
-                  className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  className="p-2 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -733,480 +675,457 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
             </div>
 
             <form onSubmit={handleSubmitIntake} className="space-y-8">
-            {/* Section 1: Demographics */}
-            <div className="space-y-4">
-              <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-teal-500" /> 1. Personal & Demographics (Mandatory)
-              </h3>
+              {/* Section 1: Demographics */}
+              <div className="space-y-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300 flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-blue-600" /> 1. Personal & Demographics (Mandatory)
+                </h3>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Full Legal Name <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.fullName}
-                    onChange={e => handleInputChange('fullName', e.target.value)}
-                    placeholder="e.g. Rajesh Kumar"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  />
-                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Full Legal Name <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.fullName}
+                      onChange={e => handleInputChange('fullName', e.target.value)}
+                      placeholder="e.g. Rajesh Kumar"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Date of Birth <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.dob}
-                    onChange={e => {
-                      handleInputChange('dob', e.target.value);
-                      const birthYear = new Date(e.target.value).getFullYear();
-                      if (!isNaN(birthYear)) {
-                        handleInputChange('age', new Date().getFullYear() - birthYear);
-                      }
-                    }}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Date of Birth <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={formData.dob}
+                      onChange={e => {
+                        handleInputChange('dob', e.target.value);
+                        const birthYear = new Date(e.target.value).getFullYear();
+                        if (!isNaN(birthYear)) {
+                          handleInputChange('age', new Date().getFullYear() - birthYear);
+                        }
+                      }}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Age <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    max="120"
-                    value={formData.age}
-                    onChange={e => handleInputChange('age', Number(e.target.value))}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Age <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      max="120"
+                      value={formData.age}
+                      onChange={e => handleInputChange('age', Number(e.target.value))}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Gender <span className="text-rose-500">*</span>
-                  </label>
-                  <select
-                    value={formData.gender}
-                    onChange={e => handleInputChange('gender', e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  >
-                    <option value="M">Male</option>
-                    <option value="F">Female</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Phone Number <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    value={formData.phone}
-                    onChange={e => handleInputChange('phone', e.target.value)}
-                    placeholder="+91 98401 23456"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Blood Group <span className="text-rose-500">*</span>
-                  </label>
-                  <select
-                    value={formData.bloodType}
-                    onChange={e => handleInputChange('bloodType', e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  >
-                    <option value="A+">A+</option>
-                    <option value="A-">A-</option>
-                    <option value="B+">B+</option>
-                    <option value="B-">B-</option>
-                    <option value="AB+">AB+</option>
-                    <option value="AB-">AB-</option>
-                    <option value="O+">O+</option>
-                    <option value="O-">O-</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Section 2: Vital Signs */}
-            <div className="space-y-4">
-              <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                <Activity className="w-3.5 h-3.5 text-rose-500" /> 2. Vital Signs & Baseline Measurements (Mandatory)
-              </h3>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Blood Pressure <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.vitals.bloodPressure}
-                    onChange={e => handleVitalsChange('bloodPressure', e.target.value)}
-                    placeholder="120/80 mmHg"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  />
-                  <span className="text-[10px] text-slate-400 mt-1 block">Format: Systolic/Diastolic</span>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Heart Rate (bpm) <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min="30"
-                    max="220"
-                    value={formData.vitals.heartRate}
-                    onChange={e => handleVitalsChange('heartRate', Number(e.target.value))}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  />
-                  <span className="text-[10px] text-slate-400 mt-1 block">Resting pulse</span>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Blood Glucose
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.vitals.bloodGlucose || ''}
-                    onChange={e => handleVitalsChange('bloodGlucose', e.target.value)}
-                    placeholder="e.g. 110 mg/dL"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  />
-                  <span className="text-[10px] text-slate-400 mt-1 block">Fasting or Post-meal</span>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Oxygen Saturation (%) <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min="70"
-                    max="100"
-                    value={formData.vitals.oxygenSaturation}
-                    onChange={e => handleVitalsChange('oxygenSaturation', Number(e.target.value))}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  />
-                  <span className="text-[10px] text-slate-400 mt-1 block">SpO2 Percentage</span>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    BMI <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    required
-                    min="10"
-                    max="60"
-                    value={formData.vitals.bmi}
-                    onChange={e => handleVitalsChange('bmi', parseFloat(e.target.value))}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  />
-                  <span className="text-[10px] text-slate-400 mt-1 block">Body Mass Index</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Section 3: Symptoms & Complaints */}
-            <div className="space-y-4">
-              <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                <FileText className="w-3.5 h-3.5 text-cyan-500" /> 3. Current Symptoms & Complaints
-              </h3>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  How are you feeling? Describe your symptoms, onset, and duration:
-                </label>
-                <textarea
-                  rows={3}
-                  value={formData.symptomsNotes || ''}
-                  onChange={e => handleInputChange('symptomsNotes', e.target.value)}
-                  placeholder="e.g. Mild chest tightness on exertion for the past 3 days. Shortness of breath when climbing stairs."
-                  className="w-full p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-                />
-              </div>
-            </div>
-
-            {/* Section 4: Allergies & Conditions Tags */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Allergies */}
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Known Drug & Food Allergies:
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={allergyInput}
-                    onChange={e => setAllergyInput(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addAllergy())}
-                    placeholder="e.g. Penicillin"
-                    className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white"
-                  />
-                  <button
-                    type="button"
-                    onClick={addAllergy}
-                    className="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold"
-                  >
-                    Add
-                  </button>
-                </div>
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {formData.allergies?.map((allg, idx) => (
-                    <span
-                      key={idx}
-                      className="px-2.5 py-1 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[11px] font-semibold flex items-center gap-1"
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Gender <span className="text-rose-500">*</span>
+                    </label>
+                    <select
+                      value={formData.gender}
+                      onChange={e => handleInputChange('gender', e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
-                      {allg}
-                      <button
-                        type="button"
-                        onClick={() => removeAllergy(idx)}
-                        className="hover:text-rose-500 font-bold ml-1"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              </div>
+                      <option value="M">Male</option>
+                      <option value="F">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
 
-              {/* Chronic Conditions */}
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Existing Chronic Conditions:
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={conditionInput}
-                    onChange={e => setConditionInput(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCondition())}
-                    placeholder="e.g. Type 2 Diabetes"
-                    className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white"
-                  />
-                  <button
-                    type="button"
-                    onClick={addCondition}
-                    className="px-3 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-bold"
-                  >
-                    Add
-                  </button>
-                </div>
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {formData.chronicConditions?.map((cond, idx) => (
-                    <span
-                      key={idx}
-                      className="px-2.5 py-1 rounded-lg bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 text-[11px] font-semibold flex items-center gap-1"
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Phone Number <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      value={formData.phone}
+                      onChange={e => handleInputChange('phone', e.target.value)}
+                      placeholder="+91 98401 23456"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Blood Group <span className="text-rose-500">*</span>
+                    </label>
+                    <select
+                      value={formData.bloodType}
+                      onChange={e => handleInputChange('bloodType', e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
-                      {cond}
-                      <button
-                        type="button"
-                        onClick={() => removeCondition(idx)}
-                        className="hover:text-rose-500 font-bold ml-1"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
+                      <option value="A+">A+</option>
+                      <option value="A-">A-</option>
+                      <option value="B+">B+</option>
+                      <option value="B-">B-</option>
+                      <option value="AB+">AB+</option>
+                      <option value="AB-">AB-</option>
+                      <option value="O+">O+</option>
+                      <option value="O-">O-</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
-              {/* Past Diseases & Prior Medical History */}
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Past Diseases & Prior Medical History (e.g. 2025 Cancer, 2024 Blood Cancer):
-                </label>
-                <div className="flex flex-wrap sm:flex-nowrap gap-2">
-                  <input
-                    type="text"
-                    value={pastDiseaseYear}
-                    onChange={e => setPastDiseaseYear(e.target.value)}
-                    placeholder="Year (e.g. 2025)"
-                    className="w-full sm:w-28 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white"
-                  />
-                  <input
-                    type="text"
-                    value={pastDiseaseCondition}
-                    onChange={e => setPastDiseaseCondition(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addPastDisease())}
-                    placeholder="Disease / Condition name (e.g. Cancer, Blood Cancer)"
-                    className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white"
-                  />
-                  <button
-                    type="button"
-                    onClick={addPastDisease}
-                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm shrink-0 cursor-pointer"
-                  >
-                    Add Past Disease
-                  </button>
+              {/* Section 2: Vital Signs */}
+              <div className="space-y-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300 flex items-center gap-1.5">
+                  <Activity className="w-3.5 h-3.5 text-blue-600" /> 2. Vital Signs & Baseline Measurements (Mandatory)
+                </h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Blood Pressure <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.vitals.bloodPressure}
+                      onChange={e => handleVitalsChange('bloodPressure', e.target.value)}
+                      placeholder="120/80 mmHg"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    <span className="text-[10px] text-slate-400 mt-1 block">Format: Systolic/Diastolic</span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Heart Rate (bpm) <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="30"
+                      max="220"
+                      value={formData.vitals.heartRate}
+                      onChange={e => handleVitalsChange('heartRate', Number(e.target.value))}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    <span className="text-[10px] text-slate-400 mt-1 block">Resting pulse</span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Blood Glucose
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.vitals.bloodGlucose || ''}
+                      onChange={e => handleVitalsChange('bloodGlucose', e.target.value)}
+                      placeholder="e.g. 110 mg/dL"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    <span className="text-[10px] text-slate-400 mt-1 block">Fasting or Post-meal</span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Oxygen Saturation (%) <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="70"
+                      max="100"
+                      value={formData.vitals.oxygenSaturation}
+                      onChange={e => handleVitalsChange('oxygenSaturation', Number(e.target.value))}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    <span className="text-[10px] text-slate-400 mt-1 block">SpO2 Percentage</span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      BMI <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      required
+                      min="10"
+                      max="60"
+                      value={formData.vitals.bmi}
+                      onChange={e => handleVitalsChange('bmi', parseFloat(e.target.value))}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    <span className="text-[10px] text-slate-400 mt-1 block">Body Mass Index</span>
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {formData.pastDiseases?.map((item, idx) => {
-                    const year = typeof item === 'string' ? (item.match(/\b(19|20)\d{2}\b/)?.[0] || 'Prior') : item.year;
-                    const name = typeof item === 'string' ? item.replace(/\b(19|20)\d{2}\b/, '').trim() : item.condition;
-                    return (
+              </div>
+
+              {/* Section 3: Symptoms & Complaints */}
+              <div className="space-y-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300 flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-blue-600" /> 3. Current Symptoms & Complaints
+                </h3>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    How are you feeling? Describe your symptoms, onset, and duration:
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={formData.symptomsNotes || ''}
+                    onChange={e => handleInputChange('symptomsNotes', e.target.value)}
+                    placeholder="e.g. Mild chest tightness on exertion for the past 3 days. Shortness of breath when climbing stairs."
+                    className="w-full p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+              </div>
+
+              {/* Section 4: Allergies & Conditions Tags */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Allergies */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                    Known Drug & Food Allergies:
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={allergyInput}
+                      onChange={e => setAllergyInput(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addAllergy())}
+                      placeholder="e.g. Penicillin"
+                      className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={addAllergy}
+                      className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-medium shadow-sm transition-all"
+                    >
+                      Add
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {formData.allergies?.map((allg, idx) => (
                       <span
                         key={idx}
-                        className="px-2.5 py-1.5 rounded-xl bg-purple-100 dark:bg-purple-950/70 text-purple-900 dark:text-purple-200 text-xs font-semibold flex items-center gap-1.5 border border-purple-200 dark:border-purple-800"
+                        className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-[11px] font-semibold flex items-center gap-1"
                       >
-                        <span className="px-1.5 py-0.5 rounded bg-purple-600 text-white text-[10px] font-bold">{year}</span>
-                        <span>{name}</span>
+                        {allg}
                         <button
                           type="button"
-                          onClick={() => removePastDisease(idx)}
-                          className="hover:text-rose-500 font-bold ml-1 cursor-pointer"
-                          aria-label="Remove past disease"
+                          onClick={() => removeAllergy(idx)}
+                          className="hover:text-rose-500 font-medium ml-1"
                         >
                           ×
                         </button>
                       </span>
-                    );
-                  })}
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              {/* Current Medications */}
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Current Medications (Self-Reported):
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={medicationInput}
-                    onChange={e => setMedicationInput(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addMedication())}
-                    placeholder="e.g. Metformin 500mg"
-                    className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white"
-                  />
-                  <button
-                    type="button"
-                    onClick={addMedication}
-                    className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
-                  >
-                    Add
-                  </button>
-                </div>
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {formData.currentMedications?.map((med, idx) => (
-                    <span
-                      key={idx}
-                      className="px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 text-[11px] font-semibold flex items-center gap-1"
+                {/* Chronic Conditions */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                    Existing Chronic Conditions:
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={conditionInput}
+                      onChange={e => setConditionInput(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCondition())}
+                      placeholder="e.g. Type 2 Diabetes"
+                      className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={addCondition}
+                      className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-medium shadow-sm transition-all"
                     >
-                      {med}
-                      <button
-                        type="button"
-                        onClick={() => removeMedication(idx)}
-                        className="hover:text-rose-500 font-bold ml-1"
+                      Add
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {formData.chronicConditions?.map((cond, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-[11px] font-semibold flex items-center gap-1"
                       >
-                        ×
-                      </button>
-                    </span>
-                  ))}
+                        {cond}
+                        <button
+                          type="button"
+                          onClick={() => removeCondition(idx)}
+                          className="hover:text-rose-500 font-medium ml-1"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Current Medications */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                    Current Medications (Self-Reported):
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={medicationInput}
+                      onChange={e => setMedicationInput(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addMedication())}
+                      placeholder="e.g. Metformin 500mg"
+                      className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={addMedication}
+                      className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-medium transition-all shadow-sm"
+                    >
+                      Add
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {formData.currentMedications?.map((med, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-[11px] font-semibold flex items-center gap-1"
+                      >
+                        {med}
+                        <button
+                          type="button"
+                          onClick={() => removeMedication(idx)}
+                          className="hover:text-rose-500 font-medium ml-1"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Submit Button */}
-            <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3 sticky -bottom-6 md:-bottom-8 -mx-6 md:-mx-8 px-6 md:px-8 py-4 bg-white dark:bg-slate-900 z-20">
-              <button
-                type="button"
-                onClick={handleCloseIntakeModal}
-                className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-semibold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
+              {/* Submit Button */}
+              <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3 sticky -bottom-6 md:-bottom-8 -mx-6 md:-mx-8 px-6 md:px-8 py-4 bg-white dark:bg-slate-900 z-20">
+                <button
+                  type="button"
+                  onClick={handleCloseIntakeModal}
+                  className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-semibold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
 
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs shadow-lg shadow-blue-600/30 flex items-center gap-2 cursor-pointer transition-all"
-              >
-                {isSubmitting ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" /> Submitting & Syncing to Graph...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" /> Save & Submit Health Data
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium text-xs shadow-lg shadow-blue-600/30 flex items-center gap-2 cursor-pointer transition-all"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" /> Submitting & Syncing to Graph...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" /> Save & Submit Health Data
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </div>
-    )}
+      )}
 
       {/* TAB 3: CARE HISTORY & EVIDENCE LEDGER */}
       {activeTab === 'ledger' && (
         <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 md:p-8 border border-slate-200 dark:border-slate-800 shadow-sm animate-fadeIn">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+              <h3 className="text-sm font-medium text-slate-900 dark:text-white flex items-center gap-2">
                 <Clock className="w-4 h-4 text-indigo-500" /> Longitudinal Evidence Ledger & Care Timeline
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              {/* <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Every clinical intake, doctor prescription, and AI verification is immutably logged.
-              </p>
+              </p> */}
             </div>
           </div>
 
           {report?.evidenceRecords && report.evidenceRecords.length > 0 ? (
-            <div className="space-y-3">
-              {report.evidenceRecords.map((entry, idx) => (
-                <div
-                  key={idx}
-                  className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 flex items-start justify-between gap-4"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono font-bold text-slate-700 dark:text-slate-300">
-                        {entry.id}
-                      </span>
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        entry.statusTag === 'verified'
-                          ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300'
-                          : entry.statusTag === 'conflict'
-                          ? 'bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300'
-                          : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
-                      }`}>
-                        {entry.statusTag}
-                      </span>
-                      <span className="text-[11px] text-slate-400">
-                        Source: {entry.sourceDocument}
+            <>
+              <div className="space-y-3">
+                {report.evidenceRecords
+                  .slice((ledgerPage - 1) * ledgerItemsPerPage, ledgerPage * ledgerItemsPerPage)
+                  .map((entry, idx) => (
+                    <div
+                      key={idx}
+                      className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 flex items-start justify-between gap-4"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-mono font-medium text-slate-700 dark:text-slate-300">
+                            {entry.id}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${entry.statusTag === 'verified'
+                              ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300'
+                              : entry.statusTag === 'conflict'
+                                ? 'bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300'
+                                : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                            }`}>
+                            {entry.statusTag}
+                          </span> 
+                          {/* <span className="text-[11px] text-slate-400">
+                            Source: {entry.sourceDocument} 
+                          </span> */}
+                        </div>
+                        <p className="text-xs font-medium text-slate-800 dark:text-slate-200">{entry.claim}</p>
+                        {/* {entry.clinicalSignificance && (
+                          <p className="text-[11px] text-slate-500 italic">{entry.clinicalSignificance} </p>
+                        )} */}
+                      </div>
+                      <span className="text-[10px] text-slate-900 whitespace-nowrap">
+                        {new Date(entry.recordedAt).toLocaleString()}
                       </span>
                     </div>
-                    <p className="text-xs font-medium text-slate-800 dark:text-slate-200">{entry.claim}</p>
-                    {entry.clinicalSignificance && (
-                      <p className="text-[11px] text-slate-500 italic">{entry.clinicalSignificance}</p>
-                    )}
-                  </div>
-                  <span className="text-[10px] text-slate-400 whitespace-nowrap">
-                    {new Date(entry.recordedAt).toLocaleString()}
+                  ))}
+              </div>
+
+              {/* Pagination Controls */}
+              {Math.ceil(report.evidenceRecords.length / ledgerItemsPerPage) > 1 && (
+                <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-200 dark:border-slate-800">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    Showing {(ledgerPage - 1) * ledgerItemsPerPage + 1} to {Math.min(ledgerPage * ledgerItemsPerPage, report.evidenceRecords.length)} of {report.evidenceRecords.length} entries
                   </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setLedgerPage(Math.max(1, ledgerPage - 1))}
+                      disabled={ledgerPage === 1}
+                      className="px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
+                    >
+                      Previous
+                    </button>
+                    <span className="text-xs font-medium text-slate-700 dark:text-slate-300 mx-2">
+                      Page {ledgerPage} of {Math.ceil(report.evidenceRecords.length / ledgerItemsPerPage)}
+                    </span>
+                    <button
+                      onClick={() => setLedgerPage(Math.min(Math.ceil(report.evidenceRecords.length / ledgerItemsPerPage), ledgerPage + 1))}
+                      disabled={ledgerPage === Math.ceil(report.evidenceRecords.length / ledgerItemsPerPage)}
+                      className="px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
+                    >
+                      Next
+                    </button>
+                  </div>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           ) : (
             <p className="text-xs text-slate-400 italic text-center py-8">
               No evidence records found for this patient yet.
