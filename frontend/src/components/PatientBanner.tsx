@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { User, Heart, Activity, AlertTriangle, FileText, Droplet, ShieldAlert } from 'lucide-react';
+import { User, Heart, Activity, AlertTriangle, FileText, Droplet, ShieldAlert, ChevronDown } from 'lucide-react';
 import { PatientProfile } from '../lib/api';
 
 interface PatientBannerProps {
@@ -39,9 +39,6 @@ export const PatientBanner: React.FC<PatientBannerProps> = ({
               <span className="px-2 py-0.5 text-xs rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono border border-slate-200 dark:border-slate-700">
                 {selectedPatient.id}
               </span>
-              <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800/60">
-                {selectedPatient.enNanbaId}
-              </span>
             </div>
             <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400 mt-1">
               <span>{selectedPatient.age} yrs • {selectedPatient.gender === 'M' ? 'Male' : 'Female'}</span>
@@ -52,22 +49,31 @@ export const PatientBanner: React.FC<PatientBannerProps> = ({
           </div>
         </div>
 
-        {/* Patient Switcher Tabs */}
-        <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
-          <span className="text-xs text-slate-500 dark:text-slate-400 px-2 font-medium">Select Case:</span>
-          {patients.map(p => (
-            <button
-              key={p.id}
-              onClick={() => onSelectPatient(p)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                selectedPatient.id === p.id
-                  ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-500/20'
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800'
-              }`}
+        {/* Patient Switcher Dropdown */}
+        <div className="flex items-center gap-3">
+          <label htmlFor="patient-select" className="text-xs text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
+            Select Case:
+          </label>
+          <div className="relative">
+            <select
+              id="patient-select"
+              value={selectedPatient.id}
+              onChange={(e) => {
+                const patient = patients.find((p) => p.id === e.target.value);
+                if (patient) onSelectPatient(patient);
+              }}
+              className="appearance-none bg-slate-50 hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm font-semibold rounded-xl pl-4 pr-10 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/50 cursor-pointer shadow-sm transition-colors"
             >
-              {p.fullName.split(' ')[0]} ({p.id})
-            </button>
-          ))}
+              {patients.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.fullName} ({p.id})
+                </option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 dark:text-slate-500">
+              <ChevronDown className="w-4 h-4" />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -79,7 +85,7 @@ export const PatientBanner: React.FC<PatientBannerProps> = ({
             <span className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-bold">
               <Activity className="w-4 h-4" /> Real-Time Vitals
             </span>
-            <span className="text-[10px] text-slate-400">Recorded Today</span>
+            <span className="text-[10px] text-slate-400">Today's Record</span>
           </div>
           <div className="grid grid-cols-3 gap-2">
             <div className="bg-white dark:bg-slate-900/80 p-2 rounded-lg text-center border border-slate-200 dark:border-slate-800">

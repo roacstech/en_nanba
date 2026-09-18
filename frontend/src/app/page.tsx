@@ -261,11 +261,11 @@ export default function DoctorWorkspacePage() {
         onPatientUpdated={handlePatientUpdated}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* ========================================================================= */}
-        {/* VIEW 1: PATIENT PORTAL                                                    */}
-        {/* ========================================================================= */}
-        {currentUser.role === 'patient' ? (
+      {currentUser.role === 'patient' ? (
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {/* ========================================================================= */}
+          {/* VIEW 1: PATIENT PORTAL                                                    */}
+          {/* ========================================================================= */}
           <PatientDashboard
             patient={activePatient}
             onPatientUpdated={handlePatientUpdated}
@@ -276,97 +276,127 @@ export default function DoctorWorkspacePage() {
               setPatientPortalMode('report');
             }}
           />
-        ) : (
-          /* ========================================================================= */
-          /* VIEW 2: DOCTOR INTELLIGENCE WORKSPACE                                     */
-          /* ========================================================================= */
-          <>
-            {/* Patient Profile Demographics Banner */}
-            <PatientBanner
-              patients={patients}
-              selectedPatient={selectedPatient}
-              onSelectPatient={handlePatientSelect}
-            />
-
-            {/* Workspace Navigation Tabs */}
-            <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 mb-6">
+        </main>
+      ) : (
+        <div className="flex flex-1 w-full h-[calc(100vh-64px)] overflow-hidden">
+          {/* ========================================================================= */}
+          {/* VIEW 2: DOCTOR INTELLIGENCE WORKSPACE                                     */}
+          {/* ========================================================================= */}
+          
+          {/* Sidebar Navigation */}
+          <aside className="w-64 flex-shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 flex-col hidden md:flex overflow-y-auto">
+            <div className="p-4 space-y-1 mt-2">
+              <div className="px-3 pb-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                Doctor Workspace
+              </div>
+              
               <button
                 onClick={() => setActiveTab('workspace')}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                className={`w-full px-3 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-3 transition-colors cursor-pointer text-left ${
                   activeTab === 'workspace'
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-900'
+                    ? 'bg-slate-100 dark:bg-slate-900 text-blue-600 dark:text-blue-400 border-l-4 border-blue-600 dark:border-blue-500 pl-2'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-900/50 border-l-4 border-transparent pl-2'
                 }`}
               >
-                <Layers className="w-4 h-4" /> Doctor Intelligence Workspace
+                <Layers className="w-4 h-4" /> Integrated Dashboard
               </button>
 
               <button
                 onClick={() => setActiveTab('live-flow')}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                className={`w-full px-3 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-3 transition-colors cursor-pointer text-left ${
                   activeTab === 'live-flow'
-                    ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-600 text-white shadow-md shadow-indigo-500/30 ring-2 ring-indigo-400/40'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-900'
+                    ? 'bg-slate-100 dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 border-l-4 border-indigo-600 dark:border-indigo-500 pl-2'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-900/50 border-l-4 border-transparent pl-2'
                 }`}
               >
-                <Zap className="w-4 h-4 text-cyan-400 animate-pulse" /> Live AI Pipeline (7 Steps)
+                <Zap className="w-4 h-4" /> Live AI Pipeline
               </button>
 
               <button
                 onClick={() => setActiveTab('graph')}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                className={`w-full px-3 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-3 transition-colors cursor-pointer text-left ${
                   activeTab === 'graph'
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-900'
+                    ? 'bg-slate-100 dark:bg-slate-900 text-blue-600 dark:text-blue-400 border-l-4 border-blue-600 dark:border-blue-500 pl-2'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-900/50 border-l-4 border-transparent pl-2'
                 }`}
               >
-                <Network className="w-4 h-4" /> Clinical Graph (Neo4j)
+                <Network className="w-4 h-4" /> Clinical Graph
               </button>
 
               <button
                 onClick={() => setActiveTab('radar')}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                className={`w-full px-3 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-3 transition-colors cursor-pointer text-left ${
                   activeTab === 'radar'
-                    ? 'bg-rose-600 text-white shadow-md shadow-rose-500/20'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-900'
+                    ? 'bg-slate-100 dark:bg-slate-900 text-blue-600 dark:text-blue-400 border-l-4 border-blue-600 dark:border-blue-500 pl-2'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-900/50 border-l-4 border-transparent pl-2'
                 }`}
               >
-                <ShieldAlert className="w-4 h-4" /> Contradiction Radar ({radarAlerts.length})
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-3">
+                    <ShieldAlert className="w-4 h-4" /> Contradictions
+                  </div>
+                  {radarAlerts.length > 0 && (
+                    <span className="bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 py-0.5 px-2 rounded-full text-[10px] font-bold">
+                      {radarAlerts.length}
+                    </span>
+                  )}
+                </div>
               </button>
 
               <button
                 onClick={() => setActiveTab('ingest')}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                className={`w-full px-3 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-3 transition-colors cursor-pointer text-left ${
                   activeTab === 'ingest'
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-900'
+                    ? 'bg-slate-100 dark:bg-slate-900 text-blue-600 dark:text-blue-400 border-l-4 border-blue-600 dark:border-blue-500 pl-2'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-900/50 border-l-4 border-transparent pl-2'
                 }`}
               >
-                <UploadCloud className="w-4 h-4" /> Text Ingest & Normalizer
+                <UploadCloud className="w-4 h-4" /> Data Ingestion
               </button>
 
               <button
                 onClick={() => setActiveTab('ai')}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                className={`w-full px-3 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-3 transition-colors cursor-pointer text-left ${
                   activeTab === 'ai'
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-900'
+                    ? 'bg-slate-100 dark:bg-slate-900 text-blue-600 dark:text-blue-400 border-l-4 border-blue-600 dark:border-blue-500 pl-2'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-900/50 border-l-4 border-transparent pl-2'
                 }`}
               >
-                <Cpu className="w-4 h-4" /> AI Reasoning (Gemini RAG)
+                <Cpu className="w-4 h-4" /> AI Reasoning
               </button>
 
               <button
                 onClick={() => setActiveTab('ledger')}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                className={`w-full px-3 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-3 transition-colors cursor-pointer text-left ${
                   activeTab === 'ledger'
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-900'
+                    ? 'bg-slate-100 dark:bg-slate-900 text-blue-600 dark:text-blue-400 border-l-4 border-blue-600 dark:border-blue-500 pl-2'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-900/50 border-l-4 border-transparent pl-2'
                 }`}
               >
-                <BookOpen className="w-4 h-4" /> Evidence Ledger ({evidenceLedger.length})
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-3">
+                    <BookOpen className="w-4 h-4" /> Evidence Ledger
+                  </div>
+                  {evidenceLedger.length > 0 && (
+                    <span className="bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 py-0.5 px-2 rounded-full text-[10px] font-bold">
+                      {evidenceLedger.length}
+                    </span>
+                  )}
+                </div>
               </button>
             </div>
+          </aside>
+
+          {/* Main Content Area */}
+          <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-4 sm:p-6 lg:p-8">
+            <div className="max-w-6xl mx-auto">
+              {/* Patient Profile Demographics Banner */}
+              <PatientBanner
+                patients={patients}
+                selectedPatient={selectedPatient}
+                onSelectPatient={handlePatientSelect}
+              />
+
 
             {/* Tab Contents */}
             {selectedPatient ? (
@@ -375,28 +405,28 @@ export default function DoctorWorkspacePage() {
                 {activeTab === 'workspace' && (
                   <div className="space-y-6">
                     {/* 7-Step Live Flowchart Banner */}
-                    <div className="p-4 rounded-2xl bg-gradient-to-r from-indigo-950/80 via-purple-950/50 to-slate-900 border border-indigo-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg">
+                    <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/40 text-indigo-400 flex items-center justify-center flex-shrink-0">
-                          <Zap className="w-5 h-5 text-indigo-400" />
+                        <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0">
+                          <Zap className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div>
-                          <div className="text-sm font-bold text-white flex items-center gap-2">
+                          <div className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                             Interactive 7-Step Clinical AI Pipeline
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono font-normal">
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono font-semibold border border-slate-200 dark:border-slate-700">
                               Live APIs Active
                             </span>
                           </div>
-                          <p className="text-xs text-slate-400 mt-0.5">
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                             Raw Text &rarr; Gemini NER &rarr; ICD-11, RxNorm, LOINC, UCUM &rarr; FHIR Bundle &rarr; Contradiction Radar &rarr; Doctor Sign-off.
                           </p>
                         </div>
                       </div>
                       <button
                         onClick={() => setActiveTab('live-flow')}
-                        className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md flex items-center gap-2 transition-all flex-shrink-0 cursor-pointer"
+                        className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-700 flex items-center gap-2 transition-all flex-shrink-0 cursor-pointer"
                       >
-                        <Sparkles className="w-3.5 h-3.5 text-indigo-200" />
+                        <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                         Open Live Pipeline
                         <ArrowRight className="w-3.5 h-3.5" />
                       </button>
@@ -500,10 +530,10 @@ export default function DoctorWorkspacePage() {
                 <p>Loading patient profiles from healthcare database...</p>
               </div>
             )}
-          </>
-        )}
-      </main>
-
+            </div>
+          </main>
+        </div>
+      )}
       {/* Footer */}
       <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 py-4 text-center text-xs text-slate-500 dark:text-slate-400">
         <p>EN NANBA Clinical Intelligence Platform • Proof of Concept (POC) Architecture • 100% Self-Hosted & Secure</p>

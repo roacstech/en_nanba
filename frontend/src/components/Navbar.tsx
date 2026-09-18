@@ -79,11 +79,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div className="flex items-center gap-2">
               <span className="font-extrabold text-lg tracking-tight text-slate-900 dark:text-white">EN NANBA</span>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">
+            {/* <p className="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">
               {currentRole === 'doctor'
                 ? "Clinical Intelligence Platform — Doctor's Workspace"
                 : "Personal Health Portal — Patient Health Records"}
-            </p>
+            </p> */}
           </div>
         </div>
 
