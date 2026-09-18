@@ -1,7 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import * as fs from 'fs';
+import * as path from 'path';
 import { MEDICAL_DICTIONARIES } from './medical-dictionary.data';
 import { LiveApiCodeMatch } from '../common/interfaces/clinical.interface';
+import { ALL_ICD11_DISEASES, Icd11DiseaseEntry } from './icd11-diseases.data';
 
 export interface RxNormVerificationResult {
   term: string;
@@ -45,8 +48,37 @@ export interface Icd11VerificationResult {
 @Injectable()
 export class ExternalTerminologiesService {
   private readonly logger = new Logger(ExternalTerminologiesService.name);
+  private fullIcd11Diseases: Icd11DiseaseEntry[] = [];
 
-  constructor(private configService: ConfigService) {}
+  constructor(private configService: ConfigService) {
+    this.initFullIcd11Dataset();
+  }
+
+  private initFullIcd11Dataset() {
+    try {
+      const candidates = [
+        path.resolve(__dirname, 'data/icd11-full-diseases.json'),
+        path.resolve(process.cwd(), 'src/normalization/data/icd11-full-diseases.json'),
+        path.resolve(process.cwd(), 'dist/normalization/data/icd11-full-diseases.json'),
+        path.resolve(process.cwd(), 'backend/src/normalization/data/icd11-full-diseases.json'),
+        path.resolve(process.cwd(), 'backend/dist/normalization/data/icd11-full-diseases.json'),
+        'c:/Users/roacs/Downloads/en_nanba/backend/src/normalization/data/icd11-full-diseases.json',
+      ];
+
+      const foundPath = candidates.find(p => fs.existsSync(p));
+      if (foundPath) {
+        const raw = fs.readFileSync(foundPath, 'utf8');
+        this.fullIcd11Diseases = JSON.parse(raw);
+        this.logger.log(`Loaded ${this.fullIcd11Diseases.length} full official WHO ICD-11 diseases from ${foundPath}`);
+      } else {
+        this.fullIcd11Diseases = ALL_ICD11_DISEASES;
+        this.logger.warn(`Full ICD-11 JSON not found, falling back to curated index (${ALL_ICD11_DISEASES.length} entries)`);
+      }
+    } catch (err: any) {
+      this.logger.error(`Error loading full ICD-11 dataset: ${err.message}`);
+      this.fullIcd11Diseases = ALL_ICD11_DISEASES;
+    }
+  }
 
   // =========================================================================
   // 1. RxNorm: Live NIH NLM RxNav REST API (100% Free, Public, No Auth needed)
@@ -286,7 +318,11 @@ export class ExternalTerminologiesService {
     }
 
     const q = term.toLowerCase();
-    const local = MEDICAL_DICTIONARIES.find(
+    const localMatch = this.fullIcd11Diseases.find(
+      d => d.display.toLowerCase().includes(q) || d.code.toLowerCase() === q
+    );
+
+    const local = localMatch || MEDICAL_DICTIONARIES.find(
       d => d.system === 'ICD-11' && (d.display.toLowerCase().includes(q) || d.code.toLowerCase() === q || d.description?.toLowerCase().includes(q))
     );
 
@@ -376,6 +412,70 @@ export class ExternalTerminologiesService {
         { chapter: '25', title: 'Codes for special purposes (COVID-19, Novel pathogens)', codeRange: 'RA00-RA26' },
         { chapter: '26', title: 'Supplementary Chapter Traditional Medicine Conditions', codeRange: 'SA00-SJ3Z' },
       ],
+    };
+  }
+
+  // Paginated WHO ICD-11 Complete Disease Catalog with search and filters
+  getAllIcd11Diseases(options: {
+    page?: number | string;
+    limit?: number | string;
+    query?: string;
+    chapter?: string;
+  }): {
+    success: boolean;
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    query?: string;
+    chapter?: string;
+    count: number;
+    data: Icd11DiseaseEntry[];
+  } {
+    const page = Math.max(1, parseInt(String(options.page || '1'), 10) || 1);
+    const limit = Math.max(1, Math.min(200, parseInt(String(options.limit || '50'), 10) || 50));
+    const query = (options.query || '').trim().toLowerCase();
+    const chapter = (options.chapter || '').trim().toLowerCase();
+
+    let filtered = this.fullIcd11Diseases && this.fullIcd11Diseases.length > 0
+      ? this.fullIcd11Diseases
+      : ALL_ICD11_DISEASES;
+
+    if (query) {
+      filtered = filtered.filter(d =>
+        d.code.toLowerCase().includes(query) ||
+        d.display.toLowerCase().includes(query) ||
+        d.category.toLowerCase().includes(query) ||
+        d.chapter.toLowerCase().includes(query) ||
+        (d.description && d.description.toLowerCase().includes(query))
+      );
+    }
+
+    if (chapter && chapter !== 'all') {
+      filtered = filtered.filter(d =>
+        d.chapter.toLowerCase().includes(chapter) ||
+        String(d.chapterNumber).toLowerCase() === chapter
+      );
+    }
+
+    const total = filtered.length;
+    const totalPages = Math.ceil(total / limit) || 1;
+    const startIndex = (page - 1) * limit;
+    const data = filtered.slice(startIndex, startIndex + limit).map(d => ({
+      ...d,
+      system: 'ICD-11',
+    }));
+
+    return {
+      success: true,
+      total,
+      page,
+      limit,
+      totalPages,
+      query: options.query || undefined,
+      chapter: options.chapter || undefined,
+      count: data.length,
+      data,
     };
   }
 

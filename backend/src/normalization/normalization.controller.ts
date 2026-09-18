@@ -55,6 +55,22 @@ export class NormalizationController {
     return this.externalTerminologies.getIcd11Chapters();
   }
 
+  @Get('normalize/icd11/all-diseases')
+  async getAllIcd11Diseases(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('q') q?: string,
+    @Query('query') query?: string,
+    @Query('chapter') chapter?: string,
+  ) {
+    return this.externalTerminologies.getAllIcd11Diseases({
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 50,
+      query: q || query,
+      chapter,
+    });
+  }
+
   @Get('normalize/verify-loinc')
   async verifyLoinc(@Query('term') term: string) {
     return this.externalTerminologies.verifyLoinc(term || '');

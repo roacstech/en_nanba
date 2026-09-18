@@ -28,7 +28,9 @@ import {
   ChevronDown,
   X,
   Calendar,
+  BookOpen,
 } from 'lucide-react';
+import { Icd11DiseaseCatalog } from './Icd11DiseaseCatalog';
 import {
   api,
   PatientProfile,
@@ -171,8 +173,8 @@ export const ClientPocDashboard: React.FC<ClientPocDashboardProps> = ({
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState<boolean>(false);
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Active Main View Tab: 'records' | 'ai'
-  const [dashboardView, setDashboardView] = useState<'records' | 'ai'>('records');
+  // Active Main View Tab: 'records' | 'ai' | 'icd11'
+  const [dashboardView, setDashboardView] = useState<'records' | 'ai' | 'icd11'>('records');
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -436,6 +438,26 @@ export const ClientPocDashboard: React.FC<ClientPocDashboardProps> = ({
           {aiResult && (
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setDashboardView('icd11')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            dashboardView === 'icd11'
+              ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <BookOpen className="w-4 h-4" />
+          <span>ICD-11 Diseases</span>
+          <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold border transition-colors ${
+            dashboardView === 'icd11'
+              ? 'bg-white/20 text-white border-white/30'
+              : 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+          }`}>
+            17k+
+          </span>
         </button>
       </div>
 
@@ -1635,6 +1657,13 @@ export const ClientPocDashboard: React.FC<ClientPocDashboardProps> = ({
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* TIER 4: ICD-11 ALL DISEASES CATALOG */}
+      {dashboardView === 'icd11' && (
+        <div className="pt-2">
+          <Icd11DiseaseCatalog />
         </div>
       )}
     </div>

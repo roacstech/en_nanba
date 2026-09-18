@@ -91,6 +91,28 @@ export interface MedicalCode {
   score?: number;
 }
 
+export interface Icd11DiseaseEntry {
+  code: string;
+  display: string;
+  chapter: string;
+  chapterNumber: string;
+  category: string;
+  description: string;
+  system?: string;
+}
+
+export interface Icd11CatalogResponse {
+  success: boolean;
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  query?: string;
+  chapter?: string;
+  count: number;
+  data: Icd11DiseaseEntry[];
+}
+
 export interface ExtractedClinicalEntity {
   id: string;
   rawText: string;
@@ -317,6 +339,23 @@ export const api = {
     if (system && system !== 'ALL') params.append('system', system);
     const res = await fetch(`${API_BASE}/normalization/ai-search?${params.toString()}`, { cache: 'no-store' });
     if (!res.ok) throw new Error('Failed to search terminologies with AI');
+    return res.json();
+  },
+
+  async getAllIcd11Diseases(params?: {
+    page?: number;
+    limit?: number;
+    q?: string;
+    chapter?: string;
+  }): Promise<Icd11CatalogResponse> {
+    const qp = new URLSearchParams();
+    if (params?.page) qp.append('page', String(params.page));
+    if (params?.limit) qp.append('limit', String(params.limit));
+    if (params?.q) qp.append('q', params.q);
+    if (params?.chapter && params.chapter !== 'ALL') qp.append('chapter', params.chapter);
+
+    const res = await fetch(`${API_BASE}/normalize/icd11/all-diseases?${qp.toString()}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Failed to fetch ICD-11 diseases catalog');
     return res.json();
   },
 
