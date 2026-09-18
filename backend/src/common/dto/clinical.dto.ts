@@ -151,6 +151,10 @@ export class CreatePatientDto {
 
   @IsArray()
   @IsOptional()
+  pastDiseases?: any[];
+
+  @IsArray()
+  @IsOptional()
   allergies?: string[];
 
   @IsOptional()
@@ -199,6 +203,10 @@ export class UpdatePatientDto {
 
   @IsArray()
   @IsOptional()
+  pastDiseases?: any[];
+
+  @IsArray()
+  @IsOptional()
   allergies?: string[];
 
   @IsOptional()
@@ -244,6 +252,10 @@ export class PatientIntakeDto {
   @IsArray()
   @IsOptional()
   chronicConditions?: string[];
+
+  @IsArray()
+  @IsOptional()
+  pastDiseases?: any[];
 
   @IsArray()
   @IsOptional()

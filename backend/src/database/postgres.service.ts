@@ -211,11 +211,14 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
           phone VARCHAR(30) NOT NULL,
           blood_type VARCHAR(10),
           chronic_conditions JSONB,
+          past_diseases JSONB,
           allergies JSONB,
           vitals JSONB,
           created_at TIMESTAMPTZ DEFAULT NOW(),
           updated_at TIMESTAMPTZ DEFAULT NOW()
         );
+
+        ALTER TABLE patients ADD COLUMN IF NOT EXISTS past_diseases JSONB;
 
         CREATE TABLE IF NOT EXISTS evidence_ledger (
           id VARCHAR(64) PRIMARY KEY,
@@ -313,17 +316,31 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
       dob: '1959-07-22',
       phone: '+91 98403 45678',
       bloodType: 'A+',
-      chronicConditions: ['Chronic kidney disease, stage 3', 'Osteoarthritis of knee'],
-      allergies: ['NSAIDs (Gastric bleeding)'],
+      chronicConditions: ['Type 2 Diabetes'],
+      pastDiseases: [
+        {
+          year: '2025',
+          condition: 'Cancer',
+          status: 'Post-treatment surveillance / Stable',
+          notes: 'Diagnosed in 2025. Annual oncological follow-up and tumor marker surveillance.',
+        },
+        {
+          year: '2024',
+          condition: 'Blood Cancer',
+          status: 'In Remission / Hematologic Monitoring',
+          notes: 'Diagnosed in 2024 (Hematologic malignancy/leukemia). Chemotherapy protocol completed; currently in complete clinical remission.',
+        },
+      ],
+      allergies: ['Penicillin (Severe Anaphylaxis Risk)'],
       vitals: {
-        bloodPressure: '138/86 mmHg',
-        heartRate: 78,
-        bloodGlucose: '128 mg/dL',
-        oxygenSaturation: 96,
-        bmi: 25.8,
+        bloodPressure: '120/80 mmHg',
+        heartRate: 72,
+        bloodGlucose: '180 mg/dL',
+        oxygenSaturation: 99,
+        bmi: 22.5,
       },
-      createdAt: '2023-11-20T11:00:00Z',
-      updatedAt: '2026-09-12T14:45:00Z',
+      createdAt: '2026-09-16T10:17:48.237Z',
+      updatedAt: '2026-09-17T06:12:01.040Z',
     };
 
     const p5: PatientProfile = {
@@ -404,6 +421,26 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
         confidenceScore: 1.0,
         recordedAt: '2024-03-10T11:00:00Z',
         clinicalSignificance: 'Fatal contraindication for beta-lactam antibiotics (Amoxicillin, Ampicillin).',
+      },
+      {
+        id: 'EV-06',
+        patientId: 'P-1003',
+        claim: 'Patient documented past medical history: Diagnosed with Blood Cancer [ICD-11: 2A70] in 2024. Chemotherapy protocol completed; currently in hematologic remission.',
+        sourceDocument: 'Hematology-Oncology Clinic Summary 2024',
+        statusTag: 'verified',
+        confidenceScore: 1.0,
+        recordedAt: '2024-05-18T10:00:00Z',
+        clinicalSignificance: 'Ongoing CBC monitoring and remission surveillance.',
+      },
+      {
+        id: 'EV-07',
+        patientId: 'P-1003',
+        claim: 'Patient documented past medical history: Diagnosed with Cancer [ICD-11: 2C70] in 2025. Oncology surveillance and staging completed. Post-treatment stable.',
+        sourceDocument: 'Comprehensive Cancer Center Annual Surveillance 2025',
+        statusTag: 'verified',
+        confidenceScore: 1.0,
+        recordedAt: '2025-04-10T11:30:00Z',
+        clinicalSignificance: 'Regular oncological review and tumor marker monitoring protocol.',
       }
     );
 
@@ -422,10 +459,10 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
       try {
         for (const p of [p1, p2, p3, p5]) {
           await this.pool.query(
-            `INSERT INTO patients (id, en_nanba_id, full_name, age, gender, dob, phone, blood_type, chronic_conditions, allergies, vitals)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            `INSERT INTO patients (id, en_nanba_id, full_name, age, gender, dob, phone, blood_type, chronic_conditions, past_diseases, allergies, vitals)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
              ON CONFLICT (id) DO NOTHING`,
-            [p.id, p.enNanbaId, p.fullName, p.age, p.gender, p.dob, p.phone, p.bloodType, JSON.stringify(p.chronicConditions), JSON.stringify(p.allergies), JSON.stringify(p.vitals)],
+            [p.id, p.enNanbaId, p.fullName, p.age, p.gender, p.dob, p.phone, p.bloodType, JSON.stringify(p.chronicConditions || []), JSON.stringify(p.pastDiseases || []), JSON.stringify(p.allergies || []), JSON.stringify(p.vitals || {})],
           );
         }
         for (const ev of this.inMemoryEvidenceLedger) {
@@ -472,6 +509,7 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
             phone: r.phone,
             bloodType: r.blood_type,
             chronicConditions: r.chronic_conditions || [],
+            pastDiseases: r.past_diseases || [],
             allergies: r.allergies || [],
             vitals: r.vitals || {},
             createdAt: r.created_at?.toISOString?.() || r.created_at,
@@ -721,6 +759,7 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
             phone: r.phone,
             bloodType: r.blood_type,
             chronicConditions: r.chronic_conditions || [],
+            pastDiseases: r.past_diseases || [],
             allergies: r.allergies || [],
             vitals: r.vitals || {},
             createdAt: r.created_at?.toISOString?.() || r.created_at,
@@ -750,6 +789,7 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
             phone: r.phone,
             bloodType: r.blood_type,
             chronicConditions: r.chronic_conditions || [],
+            pastDiseases: r.past_diseases || [],
             allergies: r.allergies || [],
             vitals: r.vitals || {},
             createdAt: r.created_at?.toISOString?.() || r.created_at,
@@ -768,15 +808,29 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
     if (this.isConnected && this.pool) {
       try {
         await this.pool.query(
-          `INSERT INTO patients (id, en_nanba_id, full_name, age, gender, dob, phone, blood_type, chronic_conditions, allergies, vitals, updated_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
+          `INSERT INTO patients (id, en_nanba_id, full_name, age, gender, dob, phone, blood_type, chronic_conditions, past_diseases, allergies, vitals, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
            ON CONFLICT (id) DO UPDATE SET
              full_name = EXCLUDED.full_name,
              chronic_conditions = EXCLUDED.chronic_conditions,
+             past_diseases = EXCLUDED.past_diseases,
              allergies = EXCLUDED.allergies,
              vitals = EXCLUDED.vitals,
              updated_at = NOW()`,
-          [patient.id, patient.enNanbaId, patient.fullName, patient.age, patient.gender, patient.dob, patient.phone, patient.bloodType, JSON.stringify(patient.chronicConditions), JSON.stringify(patient.allergies), JSON.stringify(patient.vitals)],
+          [
+            patient.id,
+            patient.enNanbaId,
+            patient.fullName,
+            patient.age,
+            patient.gender,
+            patient.dob,
+            patient.phone,
+            patient.bloodType,
+            JSON.stringify(patient.chronicConditions || []),
+            JSON.stringify(patient.pastDiseases || []),
+            JSON.stringify(patient.allergies || []),
+            JSON.stringify(patient.vitals || {}),
+          ],
         );
       } catch (e: any) {
         this.logger.error(`Error saving patient to PostgreSQL: ${e.message}`);

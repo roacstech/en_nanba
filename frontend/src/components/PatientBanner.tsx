@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { User, Heart, Activity, AlertTriangle, FileText, Droplet, ShieldAlert, ChevronDown } from 'lucide-react';
+import { User, Heart, Activity, AlertTriangle, FileText, Droplet, ShieldAlert, ChevronDown, Clock } from 'lucide-react';
 import { PatientProfile } from '../lib/api';
 
 interface PatientBannerProps {
@@ -77,8 +77,8 @@ export const PatientBanner: React.FC<PatientBannerProps> = ({
         </div>
       </div>
 
-      {/* Vitals, Chronic Conditions & Known Allergies Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 text-xs">
+      {/* Vitals, Chronic Conditions, Past Diseases & Known Allergies Grid */}
+      <div className={`grid grid-cols-1 ${selectedPatient.pastDiseases && selectedPatient.pastDiseases.length > 0 ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-4 pt-4 text-xs`}>
         {/* Vitals */}
         <div className="bg-slate-50 dark:bg-slate-950/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800/80 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 font-semibold mb-2">
@@ -119,6 +119,29 @@ export const PatientBanner: React.FC<PatientBannerProps> = ({
             ))}
           </div>
         </div>
+
+        {/* Past Diseases if any */}
+        {selectedPatient.pastDiseases && selectedPatient.pastDiseases.length > 0 && (
+          <div className="bg-slate-50 dark:bg-slate-950/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800/80 flex flex-col justify-between">
+            <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 font-semibold mb-2">
+              <Clock className="w-4 h-4 text-purple-600 dark:text-purple-400" /> Past Diseases / History
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {selectedPatient.pastDiseases.map((item, idx) => {
+                const year = typeof item === 'string' ? (item.match(/\b(19|20)\d{2}\b/)?.[0] || 'Prior') : item.year;
+                const name = typeof item === 'string' ? item.replace(/\b(19|20)\d{2}\b/, '').trim() : item.condition;
+                return (
+                  <span
+                    key={idx}
+                    className="px-2.5 py-1 rounded-md bg-purple-50 dark:bg-purple-950/50 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800/50 font-medium flex items-center gap-1"
+                  >
+                    <span className="font-bold text-purple-600 dark:text-purple-400">{year}:</span> {name}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Known Allergies */}
         <div className="bg-slate-50 dark:bg-slate-950/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800/80 flex flex-col justify-between">

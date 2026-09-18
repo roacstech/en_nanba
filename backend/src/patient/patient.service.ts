@@ -238,6 +238,7 @@ export class PatientService {
       phone: dto.phone,
       bloodType: dto.bloodType || 'Unknown',
       chronicConditions: dto.chronicConditions || [],
+      pastDiseases: dto.pastDiseases || [],
       allergies: dto.allergies || [],
       vitals: {
         bloodPressure: dto.vitals?.bloodPressure || '120/80 mmHg',

@@ -13,6 +13,13 @@ export interface AuthUser {
   token?: string;
 }
 
+export interface PastDisease {
+  year: string;
+  condition: string;
+  status?: string;
+  notes?: string;
+}
+
 export interface PatientProfile {
   id: string;
   enNanbaId: string;
@@ -23,6 +30,7 @@ export interface PatientProfile {
   phone: string;
   bloodType: string;
   chronicConditions: string[];
+  pastDiseases?: (PastDisease | string)[];
   allergies: string[];
   vitals: {
     bloodPressure: string;
@@ -201,6 +209,7 @@ export interface PatientIntakePayload {
     bmi: number;
   };
   chronicConditions?: string[];
+  pastDiseases?: (PastDisease | string)[];
   allergies?: string[];
   currentMedications?: string[];
   symptomsNotes?: string;

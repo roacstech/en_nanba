@@ -49,8 +49,8 @@ function getDefaultClinicalNoteForPatient(patient?: PatientProfile | null, patie
     return `Patient Pooja Nair (P-1006): Fever 101°F with acute throat irritation, Bronchial Asthma, takes Salbutamol 100mcg inhaler, allergic to Aspirin and Ibuprofen, Peak Flow 380 L/min`;
   }
 
-  if (pid === 'P-1003' || name.toLowerCase().includes('rajesh') || name.toLowerCase().includes('kumar')) {
-    return `Patient Rajesh Kumar (P-1003): Blood pressure 160/100 mmHg, Essential Hypertension, takes Amlodipine 5mg, allergic to ACE inhibitors (Lisinopril), Serum Creatinine 1.1 mg/dL`;
+  if (pid === 'P-1003' || name.toLowerCase().includes('kumar') || name.toLowerCase().includes('rajesh')) {
+    return `Patient kumar (P-1003): Blood pressure 120/80 mmHg, Type 2 Diabetes, Past History: 2025 Cancer (Surveillance) & 2024 Blood Cancer (Remission), allergic to Penicillin, Blood Glucose 180 mg/dL`;
   }
 
   if (pid === 'P-1004') {
