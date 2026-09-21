@@ -3,7 +3,7 @@ import { LangChainOrchestratorService } from './langchain-orchestrator.service';
 import { PhiMaskerService } from './phi-masker.service';
 import { RunReasoningDto } from '../common/dto/clinical.dto';
 
-@Controller('api/ai')
+@Controller(['api/ai', 'ai'])
 export class AiController {
   constructor(
     private readonly orchestrator: LangChainOrchestratorService,

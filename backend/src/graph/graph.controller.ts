@@ -3,7 +3,7 @@ import { ClinicalGraphService } from './clinical-graph.service';
 import { RadarService } from './radar.service';
 import { GraphNode, GraphRelationship } from '../common/interfaces/clinical.interface';
 
-@Controller('api/graph')
+@Controller(['api/graph', 'graph'])
 export class GraphController {
   constructor(
     private readonly clinicalGraphService: ClinicalGraphService,

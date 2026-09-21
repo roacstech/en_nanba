@@ -3,7 +3,7 @@ import { NormalizationService } from './normalization.service';
 import { ExternalTerminologiesService } from './external-terminologies.service';
 import { IngestTextDto, IngestFhirDto, NormalizeQueryDto } from '../common/dto/clinical.dto';
 
-@Controller('api')
+@Controller(['api', ''])
 export class NormalizationController {
   constructor(
     private readonly normalizationService: NormalizationService,

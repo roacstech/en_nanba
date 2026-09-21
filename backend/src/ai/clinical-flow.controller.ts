@@ -2,7 +2,7 @@ import { Controller, Post, Body } from '@nestjs/common';
 import { ClinicalFlowService } from './clinical-flow.service';
 import { ClinicalFlowExecutePayload } from '../common/interfaces/clinical.interface';
 
-@Controller('api/clinical-flow')
+@Controller(['api/clinical-flow', 'clinical-flow'])
 export class ClinicalFlowController {
   constructor(private readonly clinicalFlowService: ClinicalFlowService) {}
 
