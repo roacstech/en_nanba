@@ -71,6 +71,21 @@ export class NormalizationController {
     });
   }
 
+  @Get('normalize/disease-clinical-profile')
+  async getDiseaseClinicalProfile(
+    @Query('code') code: string,
+    @Query('disease') disease: string,
+    @Query('category') category?: string,
+    @Query('description') description?: string,
+  ) {
+    return this.externalTerminologies.getDiseaseClinicalProfile({
+      code: code || '',
+      disease: disease || '',
+      category,
+      description,
+    });
+  }
+
   @Get('normalize/verify-loinc')
   async verifyLoinc(@Query('term') term: string) {
     return this.externalTerminologies.verifyLoinc(term || '');

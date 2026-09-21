@@ -97,6 +97,9 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
   const [allergyInput, setAllergyInput] = useState('');
   const [conditionInput, setConditionInput] = useState('');
   const [medicationInput, setMedicationInput] = useState('');
+  const [pastDiseaseCondition, setPastDiseaseCondition] = useState('');
+  const [pastDiseaseYear, setPastDiseaseYear] = useState('');
+  const [pastDiseaseStatus, setPastDiseaseStatus] = useState('');
   const [ledgerPage, setLedgerPage] = useState(1);
   const ledgerItemsPerPage = 5;
   // Sync form when active patient changes

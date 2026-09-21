@@ -113,6 +113,83 @@ export interface Icd11CatalogResponse {
   data: Icd11DiseaseEntry[];
 }
 
+export interface DiseaseClinicalCause {
+  title: string;
+  description: string;
+  type: 'etiology' | 'risk_factor' | 'pathophysiology';
+}
+
+export interface DiseaseClinicalSymptom {
+  name: string;
+  clinicalSignificance: string;
+  severity?: 'common' | 'characteristic' | 'critical';
+}
+
+export interface DiseaseVerifiedMedication {
+  rxcui: string;
+  name: string;
+  dosageForm?: string;
+  source: string;
+  score?: number;
+  rxnavUrl: string;
+}
+
+export interface DiseaseVerifiedLabReport {
+  loincCode: string;
+  testName: string;
+  category?: string;
+  ucumUnit: string;
+  ucumDescription?: string;
+  isUcumValid: boolean;
+  source: string;
+}
+
+export interface DiseaseVerifiedAllergy {
+  rxcui: string;
+  allergen: string;
+  clinicalCategory: string;
+  criticality: 'HIGH' | 'MODERATE' | 'LOW';
+  reaction?: string;
+  source: string;
+}
+
+export interface DiseaseClinicalProfileResponse {
+  code: string;
+  display: string;
+  chapter?: string;
+  category?: string;
+  description?: string;
+  overview?: string;
+  causes: DiseaseClinicalCause[];
+  symptoms: DiseaseClinicalSymptom[];
+  medications: DiseaseVerifiedMedication[];
+  labReports: DiseaseVerifiedLabReport[];
+  allergies: DiseaseVerifiedAllergy[];
+  fhirBundle: {
+    resourceType: 'Bundle';
+    type: 'collection';
+    id: string;
+    timestamp: string;
+    total: number;
+    entry: Array<{ fullUrl?: string; resource: any }>;
+  };
+  fhirValidation: {
+    isValid: boolean;
+    resourceTypesFound: string[];
+    entryCount: number;
+    errors: string[];
+  };
+  apiMetadata: {
+    rxNormStatus: string;
+    loincStatus: string;
+    ucumStatus: string;
+    fhirStatus: string;
+    whoIcd11Status: string;
+    executionTimeMs: number;
+    timestamp: string;
+  };
+}
+
 export interface ExtractedClinicalEntity {
   id: string;
   rawText: string;
@@ -356,6 +433,25 @@ export const api = {
 
     const res = await fetch(`${API_BASE}/normalize/icd11/all-diseases?${qp.toString()}`, { cache: 'no-store' });
     if (!res.ok) throw new Error('Failed to fetch ICD-11 diseases catalog');
+    return res.json();
+  },
+
+  async getDiseaseClinicalProfile(params: {
+    code: string;
+    disease: string;
+    category?: string;
+    description?: string;
+  }): Promise<DiseaseClinicalProfileResponse> {
+    const qp = new URLSearchParams();
+    if (params.code) qp.append('code', params.code);
+    if (params.disease) qp.append('disease', params.disease);
+    if (params.category) qp.append('category', params.category);
+    if (params.description) qp.append('description', params.description);
+
+    const res = await fetch(`${API_BASE}/normalize/disease-clinical-profile?${qp.toString()}`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) throw new Error('Failed to fetch disease clinical profile');
     return res.json();
   },
 
