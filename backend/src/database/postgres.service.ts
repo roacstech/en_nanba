@@ -31,8 +31,8 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
   getDefaultDoctor(): UserAccount {
     return {
       id: 'USR-DOC-001',
-      email: 'doctor@ennanba.ai',
-      passwordHash: this.hashPassword('doctor123'),
+      email: 'sada@ennanba.ai',
+      passwordHash: this.hashPassword('sada123'),
       role: 'doctor',
       fullName: 'Dr. Aravind Swamy, MD (Cardiology)',
       phone: '+91 98400 11223',
@@ -589,7 +589,7 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
     }
 
     // Fail-safe default doctor fallback
-    if (normalizedEmail === 'doctor@ennanba.ai' || normalizedEmail === 'cmc-card-001') {
+    if (normalizedEmail === 'sada@ennanba.ai' || normalizedEmail === 'cmc-card-001') {
       const doc = this.getDefaultDoctor();
       this.inMemoryUsers.set(doc.id, doc);
       return doc;
