@@ -7,15 +7,25 @@ async function bootstrap() {
   const logger = new Logger('EN-NANBA-BOOTSTRAP');
   const app = await NestFactory.create(AppModule);
 
-  // Enable CORS for Doctor Workspace Frontend
+  // Enable CORS for Doctor Workspace Frontend and all connected clients
   app.enableCors({
-    origin: [
-      'http://localhost:3000',
-      'http://127.0.0.1:3000',
-      'https://bec-api-en-nanba-frontend.3t5o2t.easypanel.host',
-    ],
+    origin: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     credentials: true,
+  });
+
+  // Automatically route requests without /api prefix to /api so all endpoints work
+  app.use((req: any, res: any, next: any) => {
+    const url: string = req.url || '';
+    if (
+      !url.startsWith('/api') &&
+      !url.startsWith('/info') &&
+      url !== '/' &&
+      !url.startsWith('/favicon.ico')
+    ) {
+      req.url = `/api${url}`;
+    }
+    next();
   });
 
   // Global validation pipe
