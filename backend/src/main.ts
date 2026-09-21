@@ -12,7 +12,7 @@ async function bootstrap() {
     origin: [
       'http://localhost:3000',
       'http://127.0.0.1:3000',
-      'https://bec-api-en-nanban-frontend.3t5o2t.easypanel.host',
+      'https://bec-api-en-nanba-frontend.3t5o2t.easypanel.host',
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     credentials: true,
