@@ -5,6 +5,7 @@ import * as path from 'path';
 import { MEDICAL_DICTIONARIES } from './medical-dictionary.data';
 import { LiveApiCodeMatch } from '../common/interfaces/clinical.interface';
 import { ALL_ICD11_DISEASES, Icd11DiseaseEntry } from './icd11-diseases.data';
+import { TERMINOLOGY_DATASETS, TerminologyEntry } from './data/mock-terminologies';
 
 export interface RxNormVerificationResult {
   term: string;
@@ -540,6 +541,51 @@ export class ExternalTerminologiesService {
       chapter: options.chapter || undefined,
       count: data.length,
       data,
+    };
+  }
+
+  getTerminologyCatalog(terminology: string, options: {
+    page?: number | string;
+    limit?: number | string;
+    query?: string;
+  }): {
+    success: boolean;
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    query?: string;
+    count: number;
+    data: TerminologyEntry[];
+  } {
+    const page = Math.max(1, parseInt(String(options.page || '1'), 10) || 1);
+    const limit = Math.max(1, Math.min(200, parseInt(String(options.limit || '50'), 10) || 50));
+    const query = (options.query || '').trim().toLowerCase();
+
+    const dataset = TERMINOLOGY_DATASETS[terminology.toLowerCase()] || [];
+    let filtered = dataset;
+
+    if (query) {
+      filtered = filtered.filter(d =>
+        d.code.toLowerCase().includes(query) ||
+        d.display.toLowerCase().includes(query) ||
+        (d.category && d.category.toLowerCase().includes(query)) ||
+        (d.description && d.description.toLowerCase().includes(query))
+      );
+    }
+
+    const startIndex = (page - 1) * limit;
+    const paginated = filtered.slice(startIndex, startIndex + limit);
+
+    return {
+      success: true,
+      total: filtered.length,
+      page,
+      limit,
+      totalPages: Math.ceil(filtered.length / limit),
+      query: options.query,
+      count: paginated.length,
+      data: paginated,
     };
   }
 

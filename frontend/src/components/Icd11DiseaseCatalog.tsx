@@ -28,7 +28,7 @@ export const Icd11DiseaseCatalog: React.FC = () => {
   const [diseases, setDiseases] = useState<Icd11DiseaseEntry[]>([]);
   const [total, setTotal] = useState<number>(0);
   const [page, setPage] = useState<number>(1);
-  const [limit, setLimit] = useState<number>(100);
+  const [limit, setLimit] = useState<number>(50);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [debouncedQuery, setDebouncedQuery] = useState<string>('');
@@ -118,7 +118,7 @@ export const Icd11DiseaseCatalog: React.FC = () => {
   })();
 
   return (
-    <div className="space-y-6 animate-fadeIn pb-16">
+    <div className="space-y-4 animate-fadeIn pb-16">
       {/* ========================================================================= */}
       {/* 1. UNIFIED HEADER, STATS & SEARCH / FILTER PANEL                          */}
       {/* ========================================================================= */}
@@ -365,7 +365,7 @@ export const Icd11DiseaseCatalog: React.FC = () => {
                   <th className="py-3.5 px-6 w-56">Chapter</th>
                   <th className="py-3.5 px-6 w-48">Category</th>
                   <th className="py-3.5 px-6 min-w-[320px]">Clinical Description & Diagnostic Criteria</th>
-                  <th className="py-3.5 px-4 w-20 text-center">Action</th>
+                  {/* <th className="py-3.5 px-4 w-20 text-center">Action</th> */}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
@@ -377,7 +377,7 @@ export const Icd11DiseaseCatalog: React.FC = () => {
                       className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group"
                     >
                       {/* Code with 1-click Copy */}
-                      <td className="py-4 px-6 align-top">
+                      <td className="py-3 px-6 align-top">
                         <div className="flex items-center gap-1.5">
                           <span className="font-mono font-black text-sm text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/80 px-2 py-1 rounded-lg border border-blue-200 dark:border-blue-800/60 shadow-xs">
                             {d.code}
@@ -401,7 +401,7 @@ export const Icd11DiseaseCatalog: React.FC = () => {
                       </td>
 
                       {/* Display / Title */}
-                      <td className="py-4 px-6 align-top">
+                      <td className="py-3 px-6 align-top">
                         <div className="font-bold text-slate-900 dark:text-white text-sm leading-snug">
                           {d.display}
                         </div>
@@ -411,28 +411,28 @@ export const Icd11DiseaseCatalog: React.FC = () => {
                       </td>
 
                       {/* Chapter */}
-                      <td className="py-4 px-6 align-top">
+                      <td className="py-3 px-6 align-top">
                         <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-blue-50 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60">
                           {d.chapter}
                         </span>
                       </td>
 
                       {/* Category */}
-                      <td className="py-4 px-6 align-top">
+                      <td className="py-3 px-6 align-top">
                         <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                           {d.category}
                         </span>
                       </td>
 
                       {/* Description */}
-                      <td className="py-4 px-6 align-top">
+                      <td className="py-3 px-6 align-top">
                         <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-xs">
                           {d.description}
                         </p>
                       </td>
 
                       {/* Action: Eye Icon to Open Modal (LAST COLUMN) */}
-                      <td className="py-4 px-4 align-top text-center">
+                      {/* <td className="py-3 px-4 align-top text-center">
                         <button
                           type="button"
                           onClick={() => setSelectedDiseaseForModal(d)}
@@ -441,7 +441,7 @@ export const Icd11DiseaseCatalog: React.FC = () => {
                         >
                           <Eye className="w-4 h-4 transition-transform group-hover/btn:scale-110" />
                         </button>
-                      </td>
+                      </td> */}
                     </tr>
                   );
                 })}

@@ -108,7 +108,7 @@ export const DiseaseIntelligenceModal: React.FC<DiseaseIntelligenceModalProps> =
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
+    <div className="absolute inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
       <div
         className="relative w-full max-w-5xl h-[88vh] max-h-[860px] min-h-[580px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden text-slate-900 dark:text-white"
         onClick={(e) => e.stopPropagation()}

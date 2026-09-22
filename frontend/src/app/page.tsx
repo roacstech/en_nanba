@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { Stethoscope, BookOpen } from 'lucide-react';
+import { Stethoscope, BookOpen, ChevronDown } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { PatientDashboard } from '../components/PatientDashboard';
 import { AuthPortal } from '../components/AuthPortal';
 import { PatientOnboardingFlow } from '../components/PatientOnboardingFlow';
 import { ClientPocDashboard } from '../components/ClientPocDashboard';
 import { Icd11DiseaseCatalog } from '../components/Icd11DiseaseCatalog';
+import { TerminologyCatalog } from '../components/TerminologyCatalog';
 import {
   api,
   AuthUser,
@@ -29,7 +30,19 @@ export default function DoctorWorkspacePage() {
   const [activePatient, setActivePatient] = useState<PatientProfile | null>(null);
   const [patientPortalMode, setPatientPortalMode] = useState<'report' | 'intake'>('report');
   const [isIntakeModalOpen, setIsIntakeModalOpen] = useState<boolean>(false);
-  const [doctorMenu, setDoctorMenu] = useState<'workspace' | 'diseases'>('workspace');
+  const [doctorMenu, setDoctorMenu] = useState<'workspace' | 'icd11' | 'snomed' | 'loinc' | 'ucum' | 'atc' | 'dicom' | 'fhir' | 'procedures'>('icd11');
+  const [isTerminologyDropdownOpen, setIsTerminologyDropdownOpen] = useState(false);
+  const terminologyDropdownRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (terminologyDropdownRef.current && !terminologyDropdownRef.current.contains(event.target as Node)) {
+        setIsTerminologyDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Check saved authentication session
   useEffect(() => {
@@ -204,22 +217,21 @@ export default function DoctorWorkspacePage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors">
-      {/* Top Navbar with Searchable Patient Selector & Profile Dropdown */}
-      <Navbar
-        systemStatus={systemStatus}
-        currentRole={currentUser.role}
-        activePatient={activePatient}
-        currentUser={currentUser}
-        onLogout={handleLogout}
-        onEditProfile={() => setIsIntakeModalOpen(true)}
-        onPatientUpdated={handlePatientUpdated}
-        patients={patients}
-        selectedPatient={selectedPatient}
-        onSelectPatient={handlePatientSelect}
-      />
-
       {currentUser.role === 'patient' ? (
-        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="flex-1 flex flex-col min-w-0">
+          <Navbar
+            systemStatus={systemStatus}
+            currentRole={currentUser.role}
+            activePatient={activePatient}
+            currentUser={currentUser}
+            onLogout={handleLogout}
+            onEditProfile={() => setIsIntakeModalOpen(true)}
+            onPatientUpdated={handlePatientUpdated}
+            patients={patients}
+            selectedPatient={selectedPatient}
+            onSelectPatient={handlePatientSelect}
+          />
+          <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
           {/* ========================================================================= */}
           {/* VIEW 1: PATIENT PORTAL                                                    */}
           {/* ========================================================================= */}
@@ -233,104 +245,169 @@ export default function DoctorWorkspacePage() {
               setPatientPortalMode('report');
             }}
           />
-        </main>
+          </main>
+        </div>
       ) : (
-        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="flex-1 w-full flex flex-col lg:flex-row">
           {/* ========================================================================= */}
-          {/* DOCTOR DASHBOARD TOP MENU NAVIGATION                                      */}
+          {/* DOCTOR DASHBOARD SIDEBAR NAVIGATION                                       */}
           {/* ========================================================================= */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-200 dark:border-slate-800">
-            <div className="flex items-center gap-2 sm:gap-3">
+          <aside className="w-full lg:w-[280px] shrink-0 flex flex-col bg-[#052c54] text-white shadow-2xl border-r border-[#0b4275] z-50">
+            <div className="p-5 flex flex-col gap-3 h-full">
+              
+              {/* Brand Logo inside sidebar for full-height layout */}
+              <div className="flex items-center gap-3 shrink-0 mb-6 px-2">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                  <Stethoscope className="w-5 h-5 text-white" />
+                </div>
+                <span className="font-bold text-lg tracking-tight text-white">EN NANBA</span>
+              </div>
+
+              <h3 className="text-[11px] font-bold uppercase text-blue-200/70 tracking-wider px-2 mt-2 mb-1">
+                Clinical Workflow
+              </h3>
+              
               <button
                 type="button"
                 onClick={() => setDoctorMenu('workspace')}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm transition-all cursor-pointer w-full text-left ${
                   doctorMenu === 'workspace'
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-800'
+                    ? 'bg-white/15 text-white shadow-sm font-bold border border-white/10'
+                    : 'bg-transparent text-white/80 hover:bg-white/10 hover:text-white font-medium'
                 }`}
               >
-                <Stethoscope className="w-4 h-4" />
-                <span>Patient Clinical Workspace</span>
+                <Stethoscope className="w-5 h-5 shrink-0" />
+                <span className="flex-1">Patient Workspace</span>
                 {selectedPatient && (
-                  <span className="px-2 py-0.5 text-[10px] rounded-md bg-white/20 text-white font-mono font-bold">
+                  <span className="px-2 py-0.5 text-[10px] rounded-md bg-white/20 text-white font-mono font-bold shrink-0">
                     {selectedPatient.id}
                   </span>
                 )}
               </button>
 
-              <button
-                type="button"
-                onClick={() => setDoctorMenu('diseases')}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-                  doctorMenu === 'diseases'
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-800'
-                }`}
-              >
-                <BookOpen className="w-4 h-4" />
-                <span>ICD-11 Diseases</span>
-                <span className={`px-2 py-0.5 text-[10px] rounded-full font-bold border transition-colors ${
-                  doctorMenu === 'diseases'
-                    ? 'bg-white/20 text-white border-white/30'
-                    : 'bg-blue-50 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
-                }`}>
-                  17,000+ Entries
-                </span>
-              </button>
+
+                  <div className="w-full h-px bg-white/10 my-2" />
+
+                  <h3 className="text-[11px] font-bold uppercase text-blue-200/70 tracking-wider px-2 mb-1">
+                    Knowledge Base
+                  </h3>
+
+                  <div className="mt-2 w-full">
+                    <div className="space-y-0.5 max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar">
+                      {[
+                        { id: 'icd11', title: 'Disease/condition', value: 'ICD-11' },
+                        { id: 'snomed', title: 'Detailed clinical terminology', value: 'SNOMED CT, where useful' },
+                        { id: 'loinc', title: 'Laboratory tests/results', value: 'LOINC' },
+                        { id: 'ucum', title: 'Units', value: 'UCUM' },
+                        { id: 'atc', title: 'Medicines', value: 'ATC + appropriate drug terminology' },
+                        { id: 'dicom', title: 'Medical imaging', value: 'DICOM' },
+                        { id: 'fhir', title: 'Interoperability', value: 'FHIR' },
+                        { id: 'procedures', title: 'Procedures/interventions', value: 'Appropriate ICD-11/ICHI/SNOMED representation depending on use case' },
+                      ].map((term) => (
+                        <button
+                          key={term.id}
+                          type="button"
+                          onClick={() => {
+                            setDoctorMenu(term.id as any);
+                          }}
+                          className={`w-full flex flex-col items-start px-3 py-2.5 rounded-lg text-xs transition-colors text-left cursor-pointer ${
+                            doctorMenu === term.id 
+                              ? 'bg-blue-600/40 border border-blue-500/30 shadow-sm' 
+                              : 'border border-transparent hover:bg-white/10'
+                          }`}
+                        >
+                          <span className={`font-bold ${doctorMenu === term.id ? 'text-white' : 'text-slate-200'}`}>{term.title}</span>
+                          <span className={`${doctorMenu === term.id ? 'text-blue-200' : 'text-blue-300/80'} mt-0.5`}>{term.value}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
             </div>
-
+            
             {doctorMenu === 'workspace' && selectedPatient && (
-              <button
-                type="button"
-                onClick={() => setDoctorMenu('diseases')}
-                className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
-              >
-                <BookOpen className="w-3.5 h-3.5" />
-                <span>Look up Disease in ICD-11 Directory</span>
-              </button>
+              <div className="px-5 pb-5 mt-auto">
+                <button
+                  type="button"
+                  onClick={() => setDoctorMenu('icd11')}
+                  className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-white/10 shadow-sm"
+                >
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>Search ICD-11 Directory</span>
+                </button>
+              </div>
             )}
-          </div>
+          </aside>
 
-          {/* Render Active Doctor View */}
-          {doctorMenu === 'diseases' ? (
-            <Icd11DiseaseCatalog />
-          ) : selectedPatient ? (
-            <ClientPocDashboard
-              key={selectedPatient.id}
+          {/* ========================================================================= */}
+          {/* MAIN CONTENT AREA                                                         */}
+          {/* ========================================================================= */}
+          <div className="flex-1 flex flex-col min-w-0 relative">
+            <Navbar
+              systemStatus={systemStatus}
+              currentRole={currentUser.role}
+              activePatient={activePatient}
+              currentUser={currentUser}
+              onLogout={handleLogout}
+              onEditProfile={() => setIsIntakeModalOpen(true)}
+              onPatientUpdated={handlePatientUpdated}
               patients={patients}
               selectedPatient={selectedPatient}
               onSelectPatient={handlePatientSelect}
-              doctorId={currentUser?.hospitalId || currentUser?.id || 'CMC-CARD-001'}
-              doctorName={currentUser?.fullName || 'Dr. Aravind Swamy, MD (Cardiology)'}
             />
-          ) : (
-            <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4 animate-fadeIn">
-              <div className="w-16 h-16 rounded-3xl bg-blue-600/10 dark:bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-5 text-blue-600 dark:text-blue-400 shadow-sm">
-                <Stethoscope className="w-8 h-8" />
+            
+            <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+              {/* Render Active Doctor View */}
+            {doctorMenu === 'icd11' ? (
+              <Icd11DiseaseCatalog />
+            ) : doctorMenu === 'snomed' ? (
+              <TerminologyCatalog terminologyId="snomed" title="SNOMED CT Official Catalog" />
+            ) : doctorMenu === 'loinc' ? (
+              <TerminologyCatalog terminologyId="loinc" title="LOINC Official Catalog" />
+            ) : doctorMenu === 'ucum' ? (
+              <TerminologyCatalog terminologyId="ucum" title="UCUM Official Catalog" />
+            ) : doctorMenu === 'atc' ? (
+              <TerminologyCatalog terminologyId="atc" title="ATC Official Catalog" />
+            ) : doctorMenu === 'dicom' ? (
+              <TerminologyCatalog terminologyId="dicom" title="DICOM Official Catalog" />
+            ) : doctorMenu === 'fhir' ? (
+              <TerminologyCatalog terminologyId="fhir" title="FHIR Official Catalog" />
+            ) : doctorMenu === 'procedures' ? (
+              <TerminologyCatalog terminologyId="procedures" title="ICHI Official Catalog" />
+            ) : selectedPatient ? (
+              <ClientPocDashboard
+                key={selectedPatient.id}
+                patients={patients}
+                selectedPatient={selectedPatient}
+                onSelectPatient={handlePatientSelect}
+                doctorId={currentUser?.hospitalId || currentUser?.id || 'CMC-CARD-001'}
+                doctorName={currentUser?.fullName || 'Dr. Aravind Swamy, MD (Cardiology)'}
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4 animate-fadeIn">
+                <div className="w-16 h-16 rounded-3xl bg-blue-600/10 dark:bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-5 text-blue-600 dark:text-blue-400 shadow-sm">
+                  <Stethoscope className="w-8 h-8" />
+                </div>
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-2">
+                  Welcome, {currentUser?.fullName ? (currentUser.fullName.startsWith('Dr.') ? currentUser.fullName : `Dr. ${currentUser.fullName}`) : 'Dr. Aravind Swamy'}
+                </h1>
+                {/* <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mb-6">
+                  Search or select a patient from the top navigation bar to open their Clinical AI Workspace, or explore the ICD-11 disease directory.
+                </p> */}
+                {/* <button
+                  type="button"
+                  onClick={() => setDoctorMenu('icd11')}
+                  className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs sm:text-sm font-bold flex items-center gap-2 shadow-md shadow-blue-500/20 hover:opacity-95 transition-all cursor-pointer"
+                >
+                  <BookOpen className="w-4 h-4" />
+                  <span>Explore ICD-11 Diseases Catalog</span>
+                </button> */}
               </div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-2">
-                Welcome, {currentUser?.fullName ? (currentUser.fullName.startsWith('Dr.') ? currentUser.fullName : `Dr. ${currentUser.fullName}`) : 'Dr. Aravind Swamy'}
-              </h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mb-6">
-                Search or select a patient from the top navigation bar to open their Clinical AI Workspace, or explore the ICD-11 disease directory.
-              </p>
-              <button
-                type="button"
-                onClick={() => setDoctorMenu('diseases')}
-                className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs sm:text-sm font-bold flex items-center gap-2 shadow-md shadow-blue-500/20 hover:opacity-95 transition-all cursor-pointer"
-              >
-                <BookOpen className="w-4 h-4" />
-                <span>Explore ICD-11 Diseases Catalog</span>
-              </button>
-            </div>
-          )}
-        </main>
+            )}
+          </main>
+        </div>
+      </div>
       )}
-      {/* Footer */}
-      <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 py-4 text-center text-xs text-slate-500 dark:text-slate-400">
-        <p>EN NANBA Clinical Intelligence Platform • Proof of Concept (POC) Architecture • 100% Self-Hosted & Secure</p>
-      </footer>
     </div>
   );
 }

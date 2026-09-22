@@ -102,6 +102,25 @@ export interface Icd11DiseaseEntry {
   system?: string;
 }
 
+export interface TerminologyEntry {
+  code: string;
+  display: string;
+  system: string;
+  category?: string;
+  description?: string;
+}
+
+export interface TerminologyCatalogResponse {
+  success: boolean;
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  query?: string;
+  count: number;
+  data: TerminologyEntry[];
+}
+
 export interface Icd11CatalogResponse {
   success: boolean;
   total: number;
@@ -434,6 +453,24 @@ export const api = {
 
     const res = await fetch(`${API_BASE}/normalize/icd11/all-diseases?${qp.toString()}`, { cache: 'no-store' });
     if (!res.ok) throw new Error('Failed to fetch ICD-11 diseases catalog');
+    return res.json();
+  },
+
+  async getTerminologyCatalog(
+    terminology: string,
+    params?: {
+      page?: number;
+      limit?: number;
+      q?: string;
+    }
+  ): Promise<TerminologyCatalogResponse> {
+    const qp = new URLSearchParams();
+    if (params?.page) qp.append('page', String(params.page));
+    if (params?.limit) qp.append('limit', String(params.limit));
+    if (params?.q) qp.append('q', params.q);
+
+    const res = await fetch(`${API_BASE}/normalize/terminologies/${encodeURIComponent(terminology.toLowerCase())}?${qp.toString()}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`Failed to fetch ${terminology} catalog`);
     return res.json();
   },
 

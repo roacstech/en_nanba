@@ -105,16 +105,19 @@ export const Navbar: React.FC<NavbarProps> = ({
     <header className="border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/80 backdrop-blur-md sticky top-0 z-50 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
         {/* Brand */}
-        <div className="flex items-center gap-3 shrink-0">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-            <Activity className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-lg tracking-tight text-slate-900 dark:text-white">EN NANBA</span>
+        {currentRole === 'patient' && (
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+              <Activity className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-lg tracking-tight text-slate-900 dark:text-white">EN NANBA</span>
+              </div>
             </div>
           </div>
-        </div>
+        )}
+
 
         {/* Center: Searchable Patient Selector (Doctor Workspace) */}
         {currentRole === 'doctor' && (

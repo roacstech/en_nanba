@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Query } from '@nestjs/common';
+import { Controller, Post, Get, Body, Query, Param } from '@nestjs/common';
 import { NormalizationService } from './normalization.service';
 import { ExternalTerminologiesService } from './external-terminologies.service';
 import { IngestTextDto, IngestFhirDto, NormalizeQueryDto } from '../common/dto/clinical.dto';
@@ -68,6 +68,21 @@ export class NormalizationController {
       limit: limit ? parseInt(limit, 10) : 50,
       query: q || query,
       chapter,
+    });
+  }
+
+  @Get('normalize/terminologies/:terminology')
+  async getTerminologyCatalog(
+    @Param('terminology') terminology: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('q') q?: string,
+    @Query('query') query?: string,
+  ) {
+    return this.externalTerminologies.getTerminologyCatalog(terminology, {
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 50,
+      query: q || query,
     });
   }
 
