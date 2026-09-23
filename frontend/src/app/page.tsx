@@ -216,9 +216,9 @@ export default function DoctorWorkspacePage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors">
+    <div className="h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors">
       {currentUser.role === 'patient' ? (
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <Navbar
             systemStatus={systemStatus}
             currentRole={currentUser.role}
@@ -231,7 +231,7 @@ export default function DoctorWorkspacePage() {
             selectedPatient={selectedPatient}
             onSelectPatient={handlePatientSelect}
           />
-          <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 overflow-y-auto">
           {/* ========================================================================= */}
           {/* VIEW 1: PATIENT PORTAL                                                    */}
           {/* ========================================================================= */}
@@ -248,7 +248,7 @@ export default function DoctorWorkspacePage() {
           </main>
         </div>
       ) : (
-        <div className="flex-1 w-full flex flex-col lg:flex-row">
+        <div className="flex-1 w-full flex flex-col lg:flex-row overflow-hidden">
           {/* ========================================================================= */}
           {/* DOCTOR DASHBOARD SIDEBAR NAVIGATION                                       */}
           {/* ========================================================================= */}
@@ -342,7 +342,7 @@ export default function DoctorWorkspacePage() {
           {/* ========================================================================= */}
           {/* MAIN CONTENT AREA                                                         */}
           {/* ========================================================================= */}
-          <div className="flex-1 flex flex-col min-w-0 relative">
+          <div className="flex-1 flex flex-col min-w-0 relative overflow-hidden">
             <Navbar
               systemStatus={systemStatus}
               currentRole={currentUser.role}

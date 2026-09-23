@@ -481,12 +481,12 @@ export class ExternalTerminologiesService {
   }
 
   // Paginated WHO ICD-11 Complete Disease Catalog with search and filters
-  getAllIcd11Diseases(options: {
+  async getAllIcd11Diseases(options: {
     page?: number | string;
     limit?: number | string;
     query?: string;
     chapter?: string;
-  }): {
+  }): Promise<{
     success: boolean;
     total: number;
     page: number;
@@ -496,11 +496,96 @@ export class ExternalTerminologiesService {
     chapter?: string;
     count: number;
     data: Icd11DiseaseEntry[];
-  } {
+  }> {
     const page = Math.max(1, parseInt(String(options.page || '1'), 10) || 1);
     const limit = Math.max(1, Math.min(200, parseInt(String(options.limit || '50'), 10) || 50));
     const query = (options.query || '').trim().toLowerCase();
     const chapter = (options.chapter || '').trim().toLowerCase();
+
+    const clientId = this.configService.get<string>('ICD11_CLIENT_ID');
+    const clientSecret = this.configService.get<string>('ICD11_CLIENT_SECRET');
+
+    if (query && clientId && clientSecret) {
+      try {
+        const params = new URLSearchParams();
+        params.append('grant_type', 'client_credentials');
+        params.append('client_id', clientId);
+        params.append('client_secret', clientSecret);
+        params.append('scope', 'icdapi_access');
+
+        const tokenRes = await fetch('https://icdaccessmanagement.who.int/connect/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: params.toString(),
+          signal: AbortSignal.timeout(5000),
+        });
+
+        if (tokenRes.ok) {
+          const tokenData = await tokenRes.json();
+          const token = tokenData.access_token;
+          
+          const searchRes = await fetch(
+            `https://id.who.int/icd/release/11/2026-01/mms/search?q=${encodeURIComponent(query)}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: 'application/json',
+                'Accept-Language': 'en',
+                'API-Version': 'v2',
+              },
+              signal: AbortSignal.timeout(8000),
+            }
+          );
+          
+          if (searchRes.ok) {
+            const searchData = await searchRes.json();
+            const entities: any[] = searchData.destinationEntities || [];
+            
+            const apiData: Icd11DiseaseEntry[] = entities.map((e: any) => {
+               const cleanTitle = (e.title || '').replace(/<[^>]*>?/gm, '');
+               const cleanCode = e.theCode || e.id?.split('/').pop() || 'WHO-MATCH';
+               let synonyms: string[] = [];
+               
+               if (e.matchingPVs && Array.isArray(e.matchingPVs)) {
+                 synonyms = e.matchingPVs
+                   .filter((pv: any) => pv.propertyId === 'Synonym')
+                   .map((pv: any) => (pv.label || '').replace(/<[^>]*>?/gm, ''))
+                   .filter((label: string) => label && label !== cleanTitle);
+               }
+               synonyms = Array.from(new Set(synonyms));
+
+               return {
+                 code: cleanCode,
+                 display: cleanTitle,
+                 chapter: e.chapter || 'Unknown',
+                 chapterNumber: e.chapter || '',
+                 category: 'Live WHO Search Match',
+                 description: 'WHO ICD-11 MMS official classification entity.',
+                 system: 'ICD-11',
+                 isLeaf: e.isLeaf === true,
+                 synonyms: synonyms.length > 0 ? synonyms : undefined,
+               };
+            });
+
+            const paginatedApiData = apiData.slice((page - 1) * limit, page * limit);
+
+            return {
+              success: true,
+              total: apiData.length,
+              page,
+              limit,
+              totalPages: Math.ceil(apiData.length / limit) || 1,
+              query: options.query,
+              chapter: options.chapter,
+              count: paginatedApiData.length,
+              data: paginatedApiData,
+            };
+          }
+        }
+      } catch (err: any) {
+        this.logger.warn(`WHO live search failed in getAllIcd11Diseases: ${err.message}. Falling back to local index.`);
+      }
+    }
 
     let filtered = this.fullIcd11Diseases && this.fullIcd11Diseases.length > 0
       ? this.fullIcd11Diseases

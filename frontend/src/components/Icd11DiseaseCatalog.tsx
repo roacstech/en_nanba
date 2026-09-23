@@ -360,11 +360,15 @@ export const Icd11DiseaseCatalog: React.FC = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold uppercase tracking-wider text-slate-800 bg-slate-50 dark:bg-slate-950/60">
-                  <th className="py-3.5 px-6 w-36">ICD-11 Code</th>
-                  <th className="py-3.5 px-6 w-72">Disease Title</th>
-                  <th className="py-3.5 px-6 w-56">Chapter</th>
-                  <th className="py-3.5 px-6 w-48">Category</th>
-                  <th className="py-3.5 px-6 min-w-[320px]">Clinical Description & Diagnostic Criteria</th>
+                  <th className="py-3.5 px-4 w-32">ICD-11 Code</th>
+                  <th className="py-3.5 px-4 w-64">Disease Title</th>
+                  <th className="py-3.5 px-4 w-48">Synonyms</th>
+                  <th className="py-3.5 px-4 w-20">System</th>
+                  <th className="py-3.5 px-4 w-20">Type</th>
+                  <th className="py-3.5 px-4 w-16">Ch #</th>
+                  <th className="py-3.5 px-4 w-48">Chapter Name</th>
+                  <th className="py-3.5 px-4 w-40">Category</th>
+                  <th className="py-3.5 px-4 min-w-[250px]">Description & Criteria</th>
                   {/* <th className="py-3.5 px-4 w-20 text-center">Action</th> */}
                 </tr>
               </thead>
@@ -377,7 +381,7 @@ export const Icd11DiseaseCatalog: React.FC = () => {
                       className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group"
                     >
                       {/* Code with 1-click Copy */}
-                      <td className="py-3 px-6 align-top">
+                      <td className="py-3 px-4 align-top">
                         <div className="flex items-center gap-1.5">
                           <span className="font-mono font-black text-sm text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/80 px-2 py-1 rounded-lg border border-blue-200 dark:border-blue-800/60 shadow-xs">
                             {d.code}
@@ -401,31 +405,70 @@ export const Icd11DiseaseCatalog: React.FC = () => {
                       </td>
 
                       {/* Display / Title */}
-                      <td className="py-3 px-6 align-top">
+                      <td className="py-3 px-4 align-top">
                         <div className="font-bold text-slate-900 dark:text-white text-sm leading-snug">
                           {d.display}
                         </div>
-                        <div className="text-[10px] text-slate-400 font-mono mt-0.5">
-                          WHO Entity MMS
-                        </div>
                       </td>
 
-                      {/* Chapter */}
-                      <td className="py-3 px-6 align-top">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-blue-50 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60">
+                      {/* Synonyms */}
+                      <td className="py-3 px-4 align-top">
+                        {d.synonyms && d.synonyms.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {d.synonyms.map((syn, i) => (
+                              <span key={i} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                {syn}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400 italic">-</span>
+                        )}
+                      </td>
+
+                      {/* System */}
+                      <td className="py-3 px-4 align-top">
+                        {d.system && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                            {d.system}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Type (Leaf/Parent) */}
+                      <td className="py-3 px-4 align-top">
+                        {d.isLeaf !== undefined && (
+                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono ${d.isLeaf ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/50 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-800/50' : 'bg-amber-50 text-amber-600 border border-amber-200/50 dark:bg-amber-950/50 dark:text-amber-400 dark:border-amber-800/50'}`}>
+                            {d.isLeaf ? 'Leaf Node' : 'Parent Node'}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Chapter Number */}
+                      <td className="py-3 px-4 align-top">
+                        {d.chapterNumber && (
+                          <span className="text-[10px] text-slate-500 font-bold bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded whitespace-nowrap">
+                            Ch {d.chapterNumber}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Chapter Name */}
+                      <td className="py-3 px-4 align-top">
+                        <span className="inline-flex items-center px-2 py-1 rounded-lg text-[11px] font-semibold bg-blue-50 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 leading-tight">
                           {d.chapter}
                         </span>
                       </td>
 
                       {/* Category */}
-                      <td className="py-3 px-6 align-top">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                      <td className="py-3 px-4 align-top">
+                        <span className="inline-flex items-center px-2 py-1 rounded-lg text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 leading-tight">
                           {d.category}
                         </span>
                       </td>
 
                       {/* Description */}
-                      <td className="py-3 px-6 align-top">
+                      <td className="py-3 px-4 align-top">
                         <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-xs">
                           {d.description}
                         </p>
