@@ -102,6 +102,296 @@ export interface Icd11DiseaseEntry {
   system?: string;
   isLeaf?: boolean;
   synonyms?: string[];
+  foundationUri?: string;
+  browserUrl?: string;
+  foundationBrowserUrl?: string;
+  symptoms?: string[];
+  whoVersion?: string;
+}
+
+export interface WhoFoundationIntervention {
+  name: string;
+  category: string;
+  description: string;
+}
+
+export interface WhoFoundationRelatedDisorder {
+  code?: string;
+  title: string;
+  relationship: 'parent' | 'subtype' | 'associated';
+}
+
+export interface WhoFoundationRelatedConcept {
+  label: string;
+  value: string;
+  category: string;
+}
+
+export interface WhoLiveEntityDetails {
+  code: string;
+  display: string;
+  definition?: string;
+  diagnosticCriteria?: string;
+  inclusions?: string[];
+  synonyms?: string[];
+  symptoms?: string[];
+  interventions?: WhoFoundationIntervention[];
+  relatedDisorders?: WhoFoundationRelatedDisorder[];
+  relatedConcepts?: WhoFoundationRelatedConcept[];
+  browserUrl: string;
+  foundationBrowserUrl?: string;
+  foundationUri: string;
+  whoVersion: string;
+  provenance: 'WHO_ICD_API_LIVE' | 'WHO_ICD_FOUNDATION_TABULATION';
+}
+
+export interface SnomedRelationship {
+  type: 'Is a' | 'Finding site' | 'Associated morphology' | 'Method' | 'Procedure site' | 'Direct substance' | 'Has direct etiology';
+  targetId: string;
+  targetDisplay: string;
+}
+
+export interface SnomedIcd11Map {
+  code: string;
+  display: string;
+  mapType: 'Exact Match' | 'Equivalent' | 'Narrower' | 'Broader' | 'Associated';
+  chapter: string;
+}
+
+export interface SnomedConceptEntry {
+  conceptId: string;
+  fsn: string;
+  preferredTerm: string;
+  semanticTag: 'disorder' | 'finding' | 'procedure' | 'body structure' | 'observable entity' | 'substance';
+  hierarchy: 'Clinical Finding' | 'Procedure' | 'Body Structure' | 'Observable Entity' | 'Substance';
+  status: 'Active';
+  effectiveTime: string;
+  synonyms: string[];
+  definition: string;
+  relationships: SnomedRelationship[];
+  icd11Mapping: SnomedIcd11Map;
+}
+
+export interface SnomedLicensingInfo {
+  standard: string;
+  owner: string;
+  releaseEdition: string;
+  effectiveDate: string;
+  nationalReleaseCenter: string;
+  ministryAuthority: string;
+  territory: string;
+  licenseSummary: string;
+  complianceNotes: string[];
+  officialLinks: {
+    snomedInternational: string;
+    browser: string;
+    licensing: string;
+    nrcIndia: string;
+  };
+}
+
+export interface SnomedCatalogResponse {
+  success: boolean;
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  query?: string;
+  hierarchy?: string;
+  licensing: SnomedLicensingInfo;
+  count: number;
+  data: SnomedConceptEntry[];
+}
+
+export interface NiddkDiseaseResource {
+  id: string;
+  title: string;
+  category: 'Diabetes & Endocrine' | 'Digestive Diseases' | 'Kidney Diseases' | 'Liver Diseases';
+  plainLanguageSummary: string;
+  candidatePlainLanguageTerms: string[];
+  symptoms: string[];
+  causesAndRiskFactors: string[];
+  complications: string[];
+  clinicalContextNotice: string;
+  officialUrl: string;
+  relatedIcd11Code?: string;
+  relatedSnomedId?: string;
+}
+
+export interface NiddkLicensingInfo {
+  organization: string;
+  parentAgency: string;
+  domain: string;
+  clinicalGovernanceNotice: string;
+  officialPortal: string;
+  usageGuidelines: string;
+}
+
+export interface NiddkCatalogResponse {
+  success: boolean;
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  query?: string;
+  category?: string;
+  licensing: NiddkLicensingInfo;
+  count: number;
+  data: NiddkDiseaseResource[];
+}
+
+export interface NicePathwayStep {
+  stepNumber: number;
+  stage: string;
+  recommendation: string;
+  evidenceGrade?: 'High' | 'Moderate' | 'Conditional';
+}
+
+export interface NiceGuidelineEntry {
+  guidelineId: string;
+  title: string;
+  clinicalDomain: 'Diabetes & Metabolism' | 'Cardiovascular' | 'Renal & Urology' | 'Respiratory' | 'Gastroenterology';
+  version: string;
+  publishedDate: string;
+  lastUpdated: string;
+  targetPopulation: string;
+  jurisdiction: string;
+  jurisdictionNotice: string;
+  pathwaySummary: string;
+  pathwaySteps: NicePathwayStep[];
+  decisionSupportRules: string[];
+  officialUrl: string;
+  relatedIcd11Code?: string;
+  relatedSnomedId?: string;
+}
+
+export interface NiceMetadataInfo {
+  publisher: string;
+  country: string;
+  legalStatus: string;
+  jurisdictionDisclaimer: string;
+  officialPortal: string;
+  standardTypes: string[];
+}
+
+export interface NiceCatalogResponse {
+  success: boolean;
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  query?: string;
+  domain?: string;
+  metadata: NiceMetadataInfo;
+  count: number;
+  data: NiceGuidelineEntry[];
+}
+
+export interface LoincAxisParts {
+  component: string;
+  property: string;
+  timing: string;
+  system: string;
+  scale: string;
+  method: string;
+}
+
+export interface LoincObservationEntry {
+  loincNumber: string;
+  longCommonName: string;
+  shortName: string;
+  displayName: string;
+  classType: 'Laboratory' | 'Clinical';
+  category:
+    | 'Chemistry'
+    | 'Hematology'
+    | 'Lipid Panel'
+    | 'Cardiac Markers'
+    | 'Vital Signs'
+    | 'Urinalysis'
+    | 'Endocrine & Metabolic'
+    | 'Serology & Infectious';
+  axes: LoincAxisParts;
+  exampleUnits: string;
+  ucumCode: string;
+  referenceRange?: string;
+  clinicalObservationUse: string;
+  fhirObservationCode: string;
+  status: 'ACTIVE';
+  officialUrl: string;
+}
+
+export interface LoincMetadataInfo {
+  publisher: string;
+  portalUrl: string;
+  releaseVersion: string;
+  copyright: string;
+  clinicalRole: string;
+  sixAxesDescription: {
+    component: string;
+    property: string;
+    timing: string;
+    system: string;
+    scale: string;
+    method: string;
+  };
+}
+
+export interface LoincCatalogResponse {
+  success: boolean;
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  query?: string;
+  category?: string;
+  classType?: string;
+  metadata: LoincMetadataInfo;
+  count: number;
+  data: LoincObservationEntry[];
+}
+
+export interface OpenStaxAnatomyEntry {
+  systemCode: string;
+  systemName: string;
+  openStaxChapters: string;
+  educationalScope: string;
+  coreStructures: string[];
+  keyPhysiologicalMechanisms: string[];
+  clinicalRelevance: string;
+  licenseType: 'CC BY-NC-SA 4.0';
+  aiIngestionStatus: 'RESTRICTED / NO AI TRAINING';
+  commercialPipelinePolicy: 'EXCLUDED FROM COMMERCIAL AI TRAINING PIPELINE';
+  governanceNotice: string;
+  officialBookUrl: string;
+  officialLicenseUrl: string;
+}
+
+export interface OpenStaxLicensingMetadata {
+  publisher: string;
+  institution: string;
+  bookTitle: string;
+  edition: string;
+  licenseType: string;
+  licenseDescription: string;
+  aiIngestionAllowed: boolean;
+  commercialTrainingAllowed: boolean;
+  clientDirective: string;
+  officialBookUrl: string;
+  officialLicenseUrl: string;
+}
+
+export interface OpenStaxCatalogResponse {
+  success: boolean;
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  query?: string;
+  system?: string;
+  metadata: OpenStaxLicensingMetadata;
+  count: number;
+  data: OpenStaxAnatomyEntry[];
 }
 
 export interface TerminologyEntry {
@@ -182,8 +472,27 @@ export interface DiseaseClinicalProfileResponse {
   category?: string;
   description?: string;
   overview?: string;
+  foundationUri?: string;
+  browserUrl?: string;
+  whoVersion?: string;
+  whoDefinition?: string;
   causes: DiseaseClinicalCause[];
   symptoms: DiseaseClinicalSymptom[];
+  interventions?: Array<{
+    name: string;
+    category: string;
+    description: string;
+  }>;
+  relatedDisorders?: Array<{
+    code?: string;
+    title: string;
+    relationship: 'parent' | 'subtype' | 'associated';
+  }>;
+  relatedConcepts?: Array<{
+    label: string;
+    value: string;
+    category: string;
+  }>;
   medications: DiseaseVerifiedMedication[];
   labReports: DiseaseVerifiedLabReport[];
   allergies: DiseaseVerifiedAllergy[];
@@ -458,6 +767,12 @@ export const api = {
     return res.json();
   },
 
+  async getIcd11EntityDetails(codeOrUri: string): Promise<WhoLiveEntityDetails> {
+    const res = await fetch(`${API_BASE}/normalize/icd11/entity-details?code=${encodeURIComponent(codeOrUri)}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Failed to fetch WHO entity details');
+    return res.json();
+  },
+
   async getTerminologyCatalog(
     terminology: string,
     params?: {
@@ -473,6 +788,123 @@ export const api = {
 
     const res = await fetch(`${API_BASE}/normalize/terminologies/${encodeURIComponent(terminology.toLowerCase())}?${qp.toString()}`, { cache: 'no-store' });
     if (!res.ok) throw new Error(`Failed to fetch ${terminology} catalog`);
+    return res.json();
+  },
+
+  async getSnomedCatalog(params?: {
+    page?: number;
+    limit?: number;
+    q?: string;
+    hierarchy?: string;
+  }): Promise<SnomedCatalogResponse> {
+    const qp = new URLSearchParams();
+    if (params?.page) qp.append('page', String(params.page));
+    if (params?.limit) qp.append('limit', String(params.limit));
+    if (params?.q) qp.append('q', params.q);
+    if (params?.hierarchy && params.hierarchy !== 'ALL') qp.append('hierarchy', params.hierarchy);
+
+    const res = await fetch(`${API_BASE}/normalize/snomed/catalog?${qp.toString()}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Failed to fetch SNOMED CT catalog');
+    return res.json();
+  },
+
+  async getSnomedConceptDetails(conceptId: string): Promise<{ success: boolean; data: SnomedConceptEntry; licensing: SnomedLicensingInfo }> {
+    const res = await fetch(`${API_BASE}/normalize/snomed/concept-details?id=${encodeURIComponent(conceptId)}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Failed to fetch SNOMED concept details');
+    return res.json();
+  },
+
+  async getNiddkResources(params?: {
+    page?: number;
+    limit?: number;
+    q?: string;
+    category?: string;
+  }): Promise<NiddkCatalogResponse> {
+    const qp = new URLSearchParams();
+    if (params?.page) qp.append('page', String(params.page));
+    if (params?.limit) qp.append('limit', String(params.limit));
+    if (params?.q) qp.append('q', params.q);
+    if (params?.category && params.category !== 'ALL') qp.append('category', params.category);
+
+    const res = await fetch(`${API_BASE}/normalize/niddk/resources?${qp.toString()}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Failed to fetch NIDDK resources');
+    return res.json();
+  },
+
+  async getNiddkResourceDetails(id: string): Promise<{ success: boolean; data: NiddkDiseaseResource }> {
+    const res = await fetch(`${API_BASE}/normalize/niddk/resource-details?id=${encodeURIComponent(id)}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Failed to fetch NIDDK resource details');
+    return res.json();
+  },
+
+  async getNiceGuidelines(params?: {
+    page?: number;
+    limit?: number;
+    q?: string;
+    domain?: string;
+  }): Promise<NiceCatalogResponse> {
+    const qp = new URLSearchParams();
+    if (params?.page) qp.append('page', String(params.page));
+    if (params?.limit) qp.append('limit', String(params.limit));
+    if (params?.q) qp.append('q', params.q);
+    if (params?.domain && params.domain !== 'ALL') qp.append('domain', params.domain);
+
+    const res = await fetch(`${API_BASE}/normalize/nice/guidelines?${qp.toString()}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Failed to fetch NICE guidelines');
+    return res.json();
+  },
+
+  async getNiceGuidelineDetails(id: string): Promise<{ success: boolean; data: NiceGuidelineEntry }> {
+    const res = await fetch(`${API_BASE}/normalize/nice/guideline-details?id=${encodeURIComponent(id)}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Failed to fetch NICE guideline details');
+    return res.json();
+  },
+
+  async getLoincObservations(params?: {
+    page?: number;
+    limit?: number;
+    q?: string;
+    category?: string;
+    classType?: string;
+  }): Promise<LoincCatalogResponse> {
+    const qp = new URLSearchParams();
+    if (params?.page) qp.append('page', String(params.page));
+    if (params?.limit) qp.append('limit', String(params.limit));
+    if (params?.q) qp.append('q', params.q);
+    if (params?.category && params.category !== 'ALL') qp.append('category', params.category);
+    if (params?.classType && params.classType !== 'ALL') qp.append('classType', params.classType);
+
+    const res = await fetch(`${API_BASE}/normalize/loinc/observations?${qp.toString()}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Failed to fetch LOINC observations');
+    return res.json();
+  },
+
+  async getLoincObservationDetails(codeOrId: string): Promise<{ success: boolean; data: LoincObservationEntry }> {
+    const res = await fetch(`${API_BASE}/normalize/loinc/observation-details?code=${encodeURIComponent(codeOrId)}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Failed to fetch LOINC observation details');
+    return res.json();
+  },
+
+  async getOpenStaxAnatomyReferences(params?: {
+    page?: number;
+    limit?: number;
+    q?: string;
+    system?: string;
+  }): Promise<OpenStaxCatalogResponse> {
+    const qp = new URLSearchParams();
+    if (params?.page) qp.append('page', String(params.page));
+    if (params?.limit) qp.append('limit', String(params.limit));
+    if (params?.q) qp.append('q', params.q);
+    if (params?.system && params.system !== 'ALL') qp.append('system', params.system);
+
+    const res = await fetch(`${API_BASE}/normalize/openstax/anatomy-references?${qp.toString()}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Failed to fetch OpenStax anatomy references');
+    return res.json();
+  },
+
+  async getOpenStaxAnatomyDetails(systemCodeOrId: string): Promise<{ success: boolean; data: OpenStaxAnatomyEntry }> {
+    const res = await fetch(`${API_BASE}/normalize/openstax/reference-details?code=${encodeURIComponent(systemCodeOrId)}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Failed to fetch OpenStax reference details');
     return res.json();
   },
 

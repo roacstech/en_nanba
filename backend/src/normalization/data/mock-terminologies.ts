@@ -22,13 +22,15 @@ const generateExpandedData = (seed: TerminologyEntry[], count: number): Terminol
   return result;
 };
 
-export const MOCK_SNOMED: TerminologyEntry[] = generateExpandedData([
-  { code: '22298006', display: 'Myocardial infarction', system: 'SNOMED CT', category: 'Clinical Finding', description: 'Ischemic necrosis of heart muscle.' },
-  { code: '38341003', display: 'Hypertensive disorder', system: 'SNOMED CT', category: 'Clinical Finding', description: 'A persistent high blood pressure condition.' },
-  { code: '73211009', display: 'Diabetes mellitus', system: 'SNOMED CT', category: 'Clinical Finding', description: 'Metabolic disease characterized by hyperglycemia.' },
-  { code: '195967001', display: 'Asthma', system: 'SNOMED CT', category: 'Clinical Finding', description: 'Chronic inflammatory disease of the airways.' },
-  { code: '363346000', display: 'Malignant neoplastic disease', system: 'SNOMED CT', category: 'Clinical Finding', description: 'A broad category of cancer.' },
-], 34821);
+import { OFFICIAL_SNOMED_CONCEPTS } from './snomed-concepts.data';
+
+export const MOCK_SNOMED: TerminologyEntry[] = OFFICIAL_SNOMED_CONCEPTS.map(c => ({
+  code: c.conceptId,
+  display: `${c.preferredTerm} (${c.semanticTag})`,
+  system: 'SNOMED CT',
+  category: c.hierarchy,
+  description: `${c.definition} [Complementary ICD-11: ${c.icd11Mapping.code} ${c.icd11Mapping.display}]`
+}));
 
 export const MOCK_LOINC: TerminologyEntry[] = generateExpandedData([
   { code: '1751-7', display: 'Albumin [Mass/volume] in Serum or Plasma', system: 'LOINC', category: 'Chemistry', description: 'Test for albumin protein levels.' },

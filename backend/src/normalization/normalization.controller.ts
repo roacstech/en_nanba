@@ -71,6 +71,142 @@ export class NormalizationController {
     });
   }
 
+  @Get('normalize/icd11/entity-details')
+  async getIcd11EntityDetails(
+    @Query('code') code?: string,
+    @Query('uri') uri?: string,
+  ) {
+    return this.externalTerminologies.getIcd11EntityDetails(code || uri || '');
+  }
+
+  @Get('normalize/snomed/catalog')
+  async getSnomedCatalog(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('q') q?: string,
+    @Query('query') query?: string,
+    @Query('hierarchy') hierarchy?: string,
+  ) {
+    return this.externalTerminologies.getSnomedCatalog({
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 50,
+      query: q || query,
+      hierarchy,
+    });
+  }
+
+  @Get('normalize/snomed/concept-details')
+  async getSnomedConceptDetails(@Query('id') id: string) {
+    const concept = this.externalTerminologies.getSnomedConceptDetails(id || '');
+    return {
+      success: !!concept,
+      data: concept,
+      licensing: this.externalTerminologies.getSnomedLicensingInfo(),
+    };
+  }
+
+  @Get('normalize/niddk/resources')
+  async getNiddkResources(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('q') q?: string,
+    @Query('query') query?: string,
+    @Query('category') category?: string,
+  ) {
+    return this.externalTerminologies.getNiddkResources({
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 50,
+      query: q || query,
+      category,
+    });
+  }
+
+  @Get('normalize/niddk/resource-details')
+  async getNiddkResourceDetails(@Query('id') id: string) {
+    const resource = this.externalTerminologies.getNiddkResourceDetails(id || '');
+    return {
+      success: !!resource,
+      data: resource,
+    };
+  }
+
+  @Get('normalize/nice/guidelines')
+  async getNiceGuidelines(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('q') q?: string,
+    @Query('query') query?: string,
+    @Query('domain') domain?: string,
+  ) {
+    return this.externalTerminologies.getNiceGuidelines({
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 50,
+      query: q || query,
+      domain,
+    });
+  }
+
+  @Get('normalize/nice/guideline-details')
+  async getNiceGuidelineDetails(@Query('id') id: string) {
+    const guideline = this.externalTerminologies.getNiceGuidelineDetails(id || '');
+    return {
+      success: !!guideline,
+      data: guideline,
+    };
+  }
+
+  @Get('normalize/loinc/observations')
+  async getLoincObservations(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('q') q?: string,
+    @Query('query') query?: string,
+    @Query('category') category?: string,
+    @Query('classType') classType?: string,
+  ) {
+    return this.externalTerminologies.getLoincObservations({
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 50,
+      query: q || query,
+      category,
+      classType,
+    });
+  }
+
+  @Get('normalize/loinc/observation-details')
+  async getLoincObservationDetails(@Query('code') code: string, @Query('id') id?: string) {
+    const observation = this.externalTerminologies.getLoincObservationDetails(code || id || '');
+    return {
+      success: !!observation,
+      data: observation,
+    };
+  }
+
+  @Get('normalize/openstax/anatomy-references')
+  async getOpenStaxAnatomyReferences(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('q') q?: string,
+    @Query('query') query?: string,
+    @Query('system') system?: string,
+  ) {
+    return this.externalTerminologies.getOpenStaxAnatomyReferences({
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 50,
+      query: q || query,
+      system,
+    });
+  }
+
+  @Get('normalize/openstax/reference-details')
+  async getOpenStaxAnatomyDetails(@Query('code') code: string, @Query('id') id?: string) {
+    const details = this.externalTerminologies.getOpenStaxAnatomyDetails(code || id || '');
+    return {
+      success: !!details,
+      data: details,
+    };
+  }
+
   @Get('normalize/terminologies/:terminology')
   async getTerminologyCatalog(
     @Param('terminology') terminology: string,

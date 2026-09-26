@@ -8,6 +8,11 @@ import { AuthPortal } from '../components/AuthPortal';
 import { PatientOnboardingFlow } from '../components/PatientOnboardingFlow';
 import { ClientPocDashboard } from '../components/ClientPocDashboard';
 import { Icd11DiseaseCatalog } from '../components/Icd11DiseaseCatalog';
+import { SnomedCatalog } from '../components/SnomedCatalog';
+import { NiddkResourceCatalog } from '../components/NiddkResourceCatalog';
+import { NiceGuidelineCatalog } from '../components/NiceGuidelineCatalog';
+import { LoincObservationCatalog } from '../components/LoincObservationCatalog';
+import { AnatomyReferenceCatalog } from '../components/AnatomyReferenceCatalog';
 import { TerminologyCatalog } from '../components/TerminologyCatalog';
 import {
   api,
@@ -30,7 +35,7 @@ export default function DoctorWorkspacePage() {
   const [activePatient, setActivePatient] = useState<PatientProfile | null>(null);
   const [patientPortalMode, setPatientPortalMode] = useState<'report' | 'intake'>('report');
   const [isIntakeModalOpen, setIsIntakeModalOpen] = useState<boolean>(false);
-  const [doctorMenu, setDoctorMenu] = useState<'workspace' | 'icd11' | 'snomed' | 'loinc' | 'ucum' | 'atc' | 'dicom' | 'fhir' | 'procedures'>('icd11');
+  const [doctorMenu, setDoctorMenu] = useState<'workspace' | 'icd11' | 'snomed' | 'niddk' | 'nice' | 'loinc' | 'anatomy' | 'ucum' | 'atc' | 'dicom' | 'fhir' | 'procedures'>('icd11');
   const [isTerminologyDropdownOpen, setIsTerminologyDropdownOpen] = useState(false);
   const terminologyDropdownRef = React.useRef<HTMLDivElement>(null);
 
@@ -297,7 +302,10 @@ export default function DoctorWorkspacePage() {
                       {[
                         { id: 'icd11', title: 'Disease/condition', value: 'ICD-11' },
                         { id: 'snomed', title: 'Detailed clinical terminology', value: 'SNOMED CT, where useful' },
-                        { id: 'loinc', title: 'Laboratory tests/results', value: 'LOINC' },
+                        { id: 'niddk', title: 'Disease explanations & symptoms', value: 'NIDDK & Authoritative resources' },
+                        { id: 'nice', title: 'Reviewed pathways & recommendations', value: 'NICE & guideline publishers' },
+                        { id: 'loinc', title: 'Laboratory & clinical observations', value: 'LOINC' },
+                        { id: 'anatomy', title: 'Anatomy & physiology references', value: 'OpenStax A&P 2e' },
                         { id: 'ucum', title: 'Units', value: 'UCUM' },
                         { id: 'atc', title: 'Medicines', value: 'ATC + appropriate drug terminology' },
                         { id: 'dicom', title: 'Medical imaging', value: 'DICOM' },
@@ -361,9 +369,15 @@ export default function DoctorWorkspacePage() {
             {doctorMenu === 'icd11' ? (
               <Icd11DiseaseCatalog />
             ) : doctorMenu === 'snomed' ? (
-              <TerminologyCatalog terminologyId="snomed" title="SNOMED CT Official Catalog" />
+              <SnomedCatalog />
+            ) : doctorMenu === 'niddk' ? (
+              <NiddkResourceCatalog />
+            ) : doctorMenu === 'nice' ? (
+              <NiceGuidelineCatalog />
             ) : doctorMenu === 'loinc' ? (
-              <TerminologyCatalog terminologyId="loinc" title="LOINC Official Catalog" />
+              <LoincObservationCatalog />
+            ) : doctorMenu === 'anatomy' ? (
+              <AnatomyReferenceCatalog />
             ) : doctorMenu === 'ucum' ? (
               <TerminologyCatalog terminologyId="ucum" title="UCUM Official Catalog" />
             ) : doctorMenu === 'atc' ? (

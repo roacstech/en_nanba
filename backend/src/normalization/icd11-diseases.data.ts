@@ -8,6 +8,10 @@ export interface Icd11DiseaseEntry {
   system?: string;
   isLeaf?: boolean;
   synonyms?: string[];
+  foundationUri?: string;
+  browserUrl?: string;
+  symptoms?: string[];
+  whoVersion?: string;
 }
 
 export const ALL_ICD11_DISEASES: Icd11DiseaseEntry[] = [
