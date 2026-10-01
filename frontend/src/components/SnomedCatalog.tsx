@@ -16,7 +16,6 @@ import {
   Info,
   X,
   Eye,
-  Network,
   Share2,
   Building2,
   CheckCircle2,
@@ -25,6 +24,7 @@ import {
 } from 'lucide-react';
 import {
   api,
+  API_BASE,
   SnomedConceptEntry,
   SnomedCatalogResponse,
   SnomedLicensingInfo,
@@ -94,31 +94,86 @@ export const SnomedCatalog: React.FC = () => {
       {/* ========================================================================= */}
       {/* 1. CLEAN HEADER (Directly matches client requirements)                     */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 transition-all space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-teal-600 to-emerald-600 flex items-center justify-center text-white shadow-md shadow-teal-500/20 shrink-0">
-              <Network className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+      <div className="bg-white dark:bg-slate-900 rounded-md p-6 shadow-sm border border-slate-200 dark:border-slate-800 transition-all space-y-4">
+        <div>
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                 SNOMED CT Clinical Terminology
               </h1>
-              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                Clinical concepts, descriptions, synonyms, and relationships complementing ICD-11.
-              </p>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-teal-100 text-teal-800 dark:bg-teal-950/80 dark:text-teal-300 border border-teal-300 dark:border-teal-800 shadow-xs">
+                <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
+                SNOMED International (NRC India)
+              </span>
             </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={() => setShowLicensingDetails(!showLicensingDetails)}
-              className="px-3.5 py-2 rounded-xl text-xs font-semibold border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
             >
-              <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               <span>NRC India & Licensing</span>
             </button>
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Clinical concepts, descriptions, synonyms, and relationships complementing ICD-11.
+          </p>
+
+          {/* Line-by-line Official API & Resource Links */}
+          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/80 space-y-1.5 text-xs">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></span>
+                Live Search API:
+              </span>
+              <a
+                href={`${API_BASE}/normalize/snomed/catalog?q=diabetes`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 break-all"
+                title="Click to view live JSON response from SNOMED CT normalization API"
+              >
+                {API_BASE}/normalize/snomed/catalog?q=diabetes
+                <ExternalLink className="w-3 h-3 text-slate-400 shrink-0" />
+              </a>
+              <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                Live JSON
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+                Terminology Browser:
+              </span>
+              <a
+                href="https://browser.ihtsdotools.org/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 break-all"
+                title="Open official SNOMED CT browser"
+              >
+                https://browser.ihtsdotools.org/
+                <ExternalLink className="w-3 h-3 text-slate-400 shrink-0" />
+              </a>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span>
+                NRC India Portal:
+              </span>
+              <a
+                href="https://www.nrces.in"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 break-all"
+                title="National Release Centre for India (NRC India)"
+              >
+                https://www.nrces.in
+                <ExternalLink className="w-3 h-3 text-slate-400 shrink-0" />
+              </a>
+            </div>
           </div>
         </div>
 

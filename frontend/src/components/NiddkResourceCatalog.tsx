@@ -15,11 +15,11 @@ import {
   Eye,
   BookOpen,
   AlertCircle,
-  HeartHandshake,
   ArrowRight,
 } from 'lucide-react';
 import {
   api,
+  API_BASE,
   NiddkDiseaseResource,
   NiddkCatalogResponse,
   NiddkLicensingInfo,
@@ -81,33 +81,76 @@ export const NiddkResourceCatalog: React.FC = () => {
       {/* ========================================================================= */}
       {/* 1. HEADER & SUMMARY                                                       */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 transition-all space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-sky-600 to-blue-600 flex items-center justify-center text-white shadow-md shadow-sky-500/20 shrink-0">
-              <HeartHandshake className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-                NIDDK & Authoritative Disease Resources
-              </h1>
-              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                Patient-oriented disease explanations, candidate plain-language expressions, symptoms, causes, and complications.
-              </p>
-            </div>
+      <div className="bg-white dark:bg-slate-900 rounded-md p-6 shadow-sm border border-slate-200 dark:border-slate-800 transition-all space-y-4">
+        <div>
+          <div className="flex flex-wrap items-center gap-3 mb-1">
+            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+              NIDDK & Authoritative Disease Resources
+            </h1>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-sky-100 text-sky-800 dark:bg-sky-950/80 dark:text-sky-300 border border-sky-300 dark:border-sky-800 shadow-xs">
+              <span className="w-2 h-2 rounded-full bg-sky-500 animate-pulse" />
+              NIH NIDDK (USA)
+            </span>
           </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Patient-oriented disease explanations, candidate plain-language expressions, symptoms, causes, and complications.
+          </p>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <a
-              href="https://www.niddk.nih.gov/health-information"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-3.5 py-2 rounded-xl text-xs font-semibold border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
-            >
-              <BookOpen className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-              <span>NIDDK Health Information</span>
-              <ExternalLink className="w-3.5 h-3.5 text-slate-400 ml-0.5" />
-            </a>
+          {/* Line-by-line Official API & Resource Links */}
+          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/80 space-y-1.5 text-xs">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></span>
+                Live Search API:
+              </span>
+              <a
+                href={`${API_BASE}/normalize/niddk/resources?q=kidney`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 break-all"
+                title="Click to view live JSON response from NIDDK normalization API"
+              >
+                {API_BASE}/normalize/niddk/resources?q=kidney
+                <ExternalLink className="w-3 h-3 text-slate-400 shrink-0" />
+              </a>
+              <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                Live JSON
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+                Official Health Portal:
+              </span>
+              <a
+                href="https://www.niddk.nih.gov/health-information"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 break-all"
+                title="Open official NIH NIDDK health information portal"
+              >
+                https://www.niddk.nih.gov/health-information
+                <ExternalLink className="w-3 h-3 text-slate-400 shrink-0" />
+              </a>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span>
+                Clinical Research & Trials:
+              </span>
+              <a
+                href="https://www.niddk.nih.gov/research-funding"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 break-all"
+                title="NIH NIDDK Research Funding and Clinical Studies"
+              >
+                https://www.niddk.nih.gov/research-funding
+                <ExternalLink className="w-3 h-3 text-slate-400 shrink-0" />
+              </a>
+            </div>
           </div>
         </div>
 

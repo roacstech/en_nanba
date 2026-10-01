@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import {
   api,
+  API_BASE,
   NiceGuidelineEntry,
   NiceCatalogResponse,
   NiceMetadataInfo,
@@ -83,33 +84,76 @@ export const NiceGuidelineCatalog: React.FC = () => {
       {/* ========================================================================= */}
       {/* 1. CLEAN HEADER (Matching SNOMED & NIDDK design)                          */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 transition-all space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 shrink-0">
-              <GitMerge className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-                NICE & Recognised Guideline Publishers
-              </h1>
-              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                Reviewed clinical assessment pathways, evidence-based recommendations, and decision-support design.
-              </p>
-            </div>
+      <div className="bg-white dark:bg-slate-900 rounded-md p-6 shadow-sm border border-slate-200 dark:border-slate-800 transition-all space-y-4">
+        <div>
+          <div className="flex flex-wrap items-center gap-3 mb-1">
+            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+              NICE & Recognised Guideline Publishers
+            </h1>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800 shadow-xs">
+              <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+              NICE Guidelines (UK NHS)
+            </span>
           </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Reviewed clinical assessment pathways, evidence-based recommendations, and decision-support design.
+          </p>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <a
-              href="https://www.nice.org.uk/guidance"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-3.5 py-2 rounded-xl text-xs font-semibold border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
-            >
-              <BookOpen className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-              <span>NICE Guidance</span>
-              <ExternalLink className="w-3.5 h-3.5 text-slate-400 ml-0.5" />
-            </a>
+          {/* Line-by-line Official API & Resource Links */}
+          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/80 space-y-1.5 text-xs">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></span>
+                Live Search API:
+              </span>
+              <a
+                href={`${API_BASE}/normalize/nice/guidelines?q=hypertension`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 break-all"
+                title="Click to view live JSON response from NICE normalization API"
+              >
+                {API_BASE}/normalize/nice/guidelines?q=hypertension
+                <ExternalLink className="w-3 h-3 text-slate-400 shrink-0" />
+              </a>
+              <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                Live JSON
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+                Guidance Portal:
+              </span>
+              <a
+                href="https://www.nice.org.uk/guidance"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 break-all"
+                title="Open official National Institute for Health and Care Excellence portal"
+              >
+                https://www.nice.org.uk/guidance
+                <ExternalLink className="w-3 h-3 text-slate-400 shrink-0" />
+              </a>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span>
+                NICE Standards & Indicators:
+              </span>
+              <a
+                href="https://www.nice.org.uk/standards-and-indicators"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 break-all"
+                title="NICE Clinical Standards and Indicators"
+              >
+                https://www.nice.org.uk/standards-and-indicators
+                <ExternalLink className="w-3 h-3 text-slate-400 shrink-0" />
+              </a>
+            </div>
           </div>
         </div>
 
