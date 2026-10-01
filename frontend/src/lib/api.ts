@@ -1,5 +1,5 @@
 const rawBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').trim().replace(/\/+$/, '');
-const API_BASE = rawBase.endsWith('/api') ? rawBase : `${rawBase}/api`;
+export const API_BASE = rawBase.endsWith('/api') ? rawBase : `${rawBase}/api`;
 
 export interface AuthUser {
   id: string;

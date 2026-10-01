@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Search,
-  BookOpen,
   Filter,
   ChevronLeft,
   ChevronRight,
@@ -11,7 +10,6 @@ import {
   ChevronsRight,
   Copy,
   Check,
-  RefreshCw,
   ExternalLink,
   Sparkles,
   Database,
@@ -21,7 +19,7 @@ import {
   X,
   Eye,
 } from 'lucide-react';
-import { api, Icd11DiseaseEntry, Icd11CatalogResponse } from '../lib/api';
+import { api, API_BASE, Icd11DiseaseEntry, Icd11CatalogResponse } from '../lib/api';
 import { DiseaseIntelligenceModal } from './DiseaseIntelligenceModal';
 
 export const Icd11DiseaseCatalog: React.FC = () => {
@@ -114,61 +112,73 @@ export const Icd11DiseaseCatalog: React.FC = () => {
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-md p-6 shadow-sm border border-slate-200 dark:border-slate-800 transition-all space-y-5">
         {/* Top Header & Summary Stats */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20 shrink-0">
-              <BookOpen className="w-7 h-7" />
-            </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-3 mb-1">
-                <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-                  ICD-11 Official Disease Catalog
-                </h1>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shadow-xs">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  WHO Foundation(2026 Edition)
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Official WHO disease classification extended with interconnected Foundation entities, clinical symptoms, and live WHO API integration.
-              </p>
-            </div>
+        <div>
+          <div className="flex flex-wrap items-center gap-3 mb-1">
+            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+              ICD-11 Official Disease Catalog
+            </h1>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shadow-xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              WHO Foundation(2026 Edition)
+            </span>
           </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Official WHO disease classification extended with interconnected Foundation entities, clinical symptoms, and live WHO API integration.
+          </p>
 
-          {/* Official WHO Links & Refresh */}
-          <div className="flex items-center gap-2 shrink-0 flex-wrap">
-            <a
-              href="https://icd.who.int/docs/icd-api/APIDoc-Version2/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-3.5 py-2 rounded-xl text-xs font-semibold border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
-              title="Official WHO ICD-API Version 2 Documentation"
-            >
-              <BookOpen className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              <span>WHO ICD-API Docs</span>
-              <ExternalLink className="w-3.5 h-3.5 text-slate-400 ml-0.5" />
-            </a>
+          {/* Line-by-line Official API & Resource Links */}
+          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/80 space-y-1.5 text-xs">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></span>
+                Live Search API:
+              </span>
+              <a
+                href={`${API_BASE}/normalize/icd11/all-diseases?q=cholera`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 break-all"
+                title="Click to view live JSON response from ICD-11 normalization API"
+              >
+                {API_BASE}/normalize/icd11/all-diseases?q=cholera
+                <ExternalLink className="w-3 h-3 text-slate-400 shrink-0" />
+              </a>
+              <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                Live JSON
+              </span>
+            </div>
 
-            <a
-              href="https://icd.who.int/browse/2024-01/mms/en"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-3.5 py-2 rounded-xl text-xs font-semibold border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
-              title="WHO Official ICD-11 MMS Browser"
-            >
-              <span>WHO ICD-11 Browser</span>
-              <ExternalLink className="w-3.5 h-3.5 text-slate-400 ml-0.5" />
-            </a>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+                Classification Browser:
+              </span>
+              <a
+                href="https://icd.who.int/browse/2026-01/mms/en"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 break-all"
+              >
+                https://icd.who.int/browse/2026-01/mms/en
+                <ExternalLink className="w-3 h-3 text-slate-400 shrink-0" />
+              </a>
+            </div>
 
-            <button
-              type="button"
-              onClick={fetchCatalog}
-              disabled={isLoading}
-              className="p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors cursor-pointer disabled:opacity-50 shadow-sm"
-              title="Refresh Catalog Data"
-            >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-blue-500' : ''}`} />
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span>
+                Official WHO API v2 Docs:
+              </span>
+              <a
+                href="https://icd.who.int/docs/icd-api/APIDoc-Version2/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 break-all"
+              >
+                https://icd.who.int/docs/icd-api/APIDoc-Version2/
+                <ExternalLink className="w-3 h-3 text-slate-400 shrink-0" />
+              </a>
+            </div>
           </div>
         </div>
 
