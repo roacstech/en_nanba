@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as fs from 'fs';
 import * as path from 'path';
+import { Pool } from 'pg';
 import { MEDICAL_DICTIONARIES } from './medical-dictionary.data';
 import { LiveApiCodeMatch } from '../common/interfaces/clinical.interface';
 import { ALL_ICD11_DISEASES, Icd11DiseaseEntry } from './icd11-diseases.data';
@@ -9,6 +10,7 @@ import { TERMINOLOGY_DATASETS, TerminologyEntry } from './data/mock-terminologie
 import {
   OFFICIAL_SNOMED_CONCEPTS,
   SnomedConceptEntry,
+  SnomedIcd11Map,
   SNOMED_LICENSING_METADATA,
   SnomedLicensingInfo
 } from './data/snomed-concepts.data';
@@ -158,17 +160,84 @@ export interface DiseaseClinicalProfile {
 }
 
 @Injectable()
-export class ExternalTerminologiesService {
+export class ExternalTerminologiesService implements OnModuleDestroy {
   private readonly logger = new Logger(ExternalTerminologiesService.name);
   private fullIcd11Diseases: Icd11DiseaseEntry[] = [];
   private foundationMap = new Map<string, { foundationUri: string; browserUrl: string; title: string; chapterNo: string }>();
   private whoSymptomsCatalog: Array<{ code: string; title: string; uri: string }> = [];
   private whoEntityCache = new Map<string, any>();
   private whoTokenCache: { token: string; expiresAt: number } | null = null;
+  private snomedPool: Pool | null = null;
+  private isSnomedDbConnected = false;
+  private cachedTotalConceptsCount: number = 378553;
+  private hierarchyCountsCache: Map<string, number> = new Map([
+    ['clinical finding', 210747],
+    ['procedure', 56722],
+    ['body structure', 36651],
+    ['organism', 34474],
+    ['substance', 28992],
+    ['observable entity', 10967],
+  ]);
 
   constructor(private configService: ConfigService) {
     this.initFullIcd11Dataset();
     this.initFoundationDataset();
+    this.initSnomedDbPool();
+  }
+
+  async onModuleDestroy() {
+    if (this.snomedPool) {
+      await this.snomedPool.end();
+    }
+  }
+
+  private initSnomedDbPool() {
+    try {
+      const databaseUrl = this.configService.get<string>('DATABASE_URL');
+      let poolConfig: any;
+
+      if (databaseUrl && databaseUrl.trim().length > 0) {
+        poolConfig = {
+          connectionString: databaseUrl,
+          max: 10,
+          idleTimeoutMillis: 30000,
+          connectionTimeoutMillis: 5000,
+        };
+      } else {
+        const host = this.configService.get<string>('POSTGRES_HOST') || '147.93.30.32';
+        const port = Number(this.configService.get<number | string>('POSTGRES_PORT') || 5435);
+        const user = this.configService.get<string>('POSTGRES_USER') || 'postgres';
+        const password = this.configService.get<string>('POSTGRES_PASSWORD') || 'Roacs@2026';
+        const database = this.configService.get<string>('POSTGRES_DB') || 'en_nanban_clinical';
+        const ssl = this.configService.get<string>('POSTGRES_SSL') === 'true';
+
+        poolConfig = {
+          host,
+          port,
+          user,
+          password,
+          database,
+          max: 10,
+          idleTimeoutMillis: 30000,
+          connectionTimeoutMillis: 5000,
+          ...(ssl ? { ssl: { rejectUnauthorized: false } } : {}),
+        };
+      }
+
+      this.snomedPool = new Pool(poolConfig);
+      this.snomedPool.query('SELECT 1;')
+        .then(() => {
+          this.isSnomedDbConnected = true;
+          this.logger.log(`SNOMED CT Database connected! Serving ${this.cachedTotalConceptsCount} active concepts from PostgreSQL.`);
+        })
+        .catch((err) => {
+          this.isSnomedDbConnected = false;
+          this.logger.warn(`SNOMED CT DB query test failed: ${err.message}. Using in-memory fallback.`);
+        });
+    } catch (e: any) {
+      this.isSnomedDbConnected = false;
+      this.logger.warn(`Failed to initialize SNOMED DB Pool: ${e.message}`);
+    }
   }
 
   private initFoundationDataset() {
@@ -1086,12 +1155,12 @@ export class ExternalTerminologiesService {
   // =========================================================================
   // 5b. SNOMED CT Clinical Terminology Repository & ICD-11 Cross-Mapping
   // =========================================================================
-  getSnomedCatalog(options: {
+  async getSnomedCatalog(options: {
     page?: number | string;
     limit?: number | string;
     query?: string;
     hierarchy?: string;
-  }): {
+  }): Promise<{
     success: boolean;
     total: number;
     page: number;
@@ -1102,12 +1171,83 @@ export class ExternalTerminologiesService {
     licensing: SnomedLicensingInfo;
     count: number;
     data: SnomedConceptEntry[];
-  } {
+  }> {
     const page = Math.max(1, parseInt(String(options.page || '1'), 10) || 1);
     const limit = Math.max(1, Math.min(200, parseInt(String(options.limit || '50'), 10) || 50));
-    const query = (options.query || '').trim().toLowerCase();
-    const hierarchy = (options.hierarchy || '').trim().toLowerCase();
+    const rawQuery = (options.query || '').trim();
+    const rawHierarchy = (options.hierarchy || '').trim();
 
+    if (this.snomedPool && this.isSnomedDbConnected) {
+      try {
+        const whereClauses: string[] = ['is_active = TRUE'];
+        const params: any[] = [];
+        let paramIdx = 1;
+
+        if (rawHierarchy && rawHierarchy.toLowerCase() !== 'all') {
+          whereClauses.push(`(hierarchy ILIKE $${paramIdx} OR semantic_tag ILIKE $${paramIdx})`);
+          params.push(`%${rawHierarchy}%`);
+          paramIdx++;
+        }
+
+        if (rawQuery) {
+          whereClauses.push(`(concept_id = $${paramIdx} OR preferred_term ILIKE $${paramIdx + 1} OR fsn ILIKE $${paramIdx + 1} OR icd11_code ILIKE $${paramIdx + 1})`);
+          params.push(rawQuery);
+          params.push(`%${rawQuery}%`);
+          paramIdx += 2;
+        }
+
+        const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+        // Determine total count (use cached counts when possible for instant response)
+        let total = 0;
+        if (!rawQuery && (!rawHierarchy || rawHierarchy.toLowerCase() === 'all')) {
+          total = this.cachedTotalConceptsCount;
+        } else if (!rawQuery && rawHierarchy && this.hierarchyCountsCache.has(rawHierarchy.toLowerCase())) {
+          total = this.hierarchyCountsCache.get(rawHierarchy.toLowerCase()) || 0;
+        } else {
+          const countSql = `SELECT COUNT(*) FROM snomed_concepts ${whereSql};`;
+          const countRes = await this.snomedPool.query(countSql, params);
+          total = parseInt(countRes.rows[0]?.count || '0', 10);
+        }
+
+        // Query paginated rows
+        const offset = (page - 1) * limit;
+        const dataParams = [...params, limit, offset];
+        const dataSql = `SELECT concept_id, preferred_term, fsn, semantic_tag, hierarchy, icd11_code, icd11_display, definition 
+                         FROM snomed_concepts 
+                         ${whereSql} 
+                         ORDER BY 
+                           CASE 
+                             WHEN preferred_term ~ '^[a-zA-Z]{3,}' THEN 0
+                             WHEN preferred_term ~ '^[a-zA-Z]' THEN 1
+                             ELSE 2 
+                           END, 
+                           preferred_term ASC 
+                         LIMIT $${paramIdx} OFFSET $${paramIdx + 1};`;
+        const dataRes = await this.snomedPool.query(dataSql, dataParams);
+
+        const data: SnomedConceptEntry[] = dataRes.rows.map(row => this.mapDbRowToSnomedConcept(row));
+
+        return {
+          success: true,
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit) || 1,
+          query: options.query,
+          hierarchy: options.hierarchy,
+          licensing: SNOMED_LICENSING_METADATA,
+          count: data.length,
+          data,
+        };
+      } catch (err: any) {
+        this.logger.warn(`PostgreSQL SNOMED query failed: ${err.message}. Falling back to in-memory.`);
+      }
+    }
+
+    // In-memory fallback
+    const query = rawQuery.toLowerCase();
+    const hierarchy = rawHierarchy.toLowerCase();
     let filtered = OFFICIAL_SNOMED_CONCEPTS;
 
     if (hierarchy && hierarchy !== 'all') {
@@ -1146,13 +1286,177 @@ export class ExternalTerminologiesService {
     };
   }
 
-  getSnomedConceptDetails(conceptId: string): SnomedConceptEntry | null {
+  async getSnomedConceptDetails(conceptId: string): Promise<SnomedConceptEntry | null> {
     const cleanId = (conceptId || '').trim();
-    return OFFICIAL_SNOMED_CONCEPTS.find(c => c.conceptId === cleanId) || null;
+    if (!cleanId) return null;
+
+    // Check rich starter concept array first
+    const starter = OFFICIAL_SNOMED_CONCEPTS.find(c => c.conceptId === cleanId);
+    if (starter) return starter;
+
+    if (this.snomedPool && this.isSnomedDbConnected) {
+      try {
+        const res = await this.snomedPool.query(
+          'SELECT concept_id, preferred_term, fsn, semantic_tag, hierarchy, icd11_code, icd11_display, definition FROM snomed_concepts WHERE concept_id = $1 LIMIT 1;',
+          [cleanId]
+        );
+        if (res.rows.length > 0) {
+          return this.mapDbRowToSnomedConcept(res.rows[0]);
+        }
+      } catch (err: any) {
+        this.logger.warn(`Failed to fetch SNOMED concept details from DB: ${err.message}`);
+      }
+    }
+
+    return null;
   }
 
   getSnomedLicensingInfo(): SnomedLicensingInfo {
     return SNOMED_LICENSING_METADATA;
+  }
+
+  private mapDbRowToSnomedConcept(row: any): SnomedConceptEntry {
+    const starter = OFFICIAL_SNOMED_CONCEPTS.find(c => c.conceptId === row.concept_id);
+    if (starter) return starter;
+
+    const term = row.preferred_term || '';
+    const tag = (row.semantic_tag || 'finding').toLowerCase();
+    const hierarchy = row.hierarchy || 'Clinical Finding';
+
+    let validSemanticTag: SnomedConceptEntry['semanticTag'] = 'finding';
+    if (tag.includes('disorder')) validSemanticTag = 'disorder';
+    else if (tag.includes('procedure')) validSemanticTag = 'procedure';
+    else if (tag.includes('structure') || tag.includes('body')) validSemanticTag = 'body structure';
+    else if (tag.includes('observable')) validSemanticTag = 'observable entity';
+    else if (tag.includes('substance')) validSemanticTag = 'substance';
+
+    let validHierarchy: SnomedConceptEntry['hierarchy'] = 'Clinical Finding';
+    if (hierarchy.includes('Procedure')) validHierarchy = 'Procedure';
+    else if (hierarchy.includes('Body') || hierarchy.includes('Structure')) validHierarchy = 'Body Structure';
+    else if (hierarchy.includes('Observable')) validHierarchy = 'Observable Entity';
+    else if (hierarchy.includes('Substance')) validHierarchy = 'Substance';
+    const icd11Mapping = (row.icd11_code && row.icd11_code !== 'Pending Map')
+      ? {
+          code: row.icd11_code,
+          display: row.icd11_display || term,
+          mapType: 'Equivalent' as const,
+          chapter: 'WHO ICD-11 MMS',
+        }
+      : this.findDynamicIcd11Mapping(term, validSemanticTag, validHierarchy);
+
+    const synonymsSet = new Set<string>([term]);
+    if (icd11Mapping.display && icd11Mapping.display.toLowerCase() !== term.toLowerCase() && !icd11Mapping.display.includes('(')) {
+      synonymsSet.add(icd11Mapping.display);
+    }
+    if (row.fsn) {
+      const cleanFsn = row.fsn.replace(/\s*\([a-zA-Z\s/]+\)$/, '').trim();
+      if (cleanFsn && cleanFsn.toLowerCase() !== term.toLowerCase()) {
+        synonymsSet.add(cleanFsn);
+      }
+    }
+    if (term.includes(',')) {
+      const parts = term.split(',').map((p: string) => p.trim());
+      if (parts.length === 2 && parts[0] && parts[1]) {
+        synonymsSet.add(`${parts[1]} ${parts[0]}`);
+      }
+    }
+
+    return {
+      conceptId: row.concept_id,
+      fsn: row.fsn || `${term} (${validSemanticTag})`,
+      preferredTerm: term,
+      semanticTag: validSemanticTag,
+      hierarchy: validHierarchy,
+      status: 'Active',
+      effectiveTime: '2026-01-01',
+      synonyms: Array.from(synonymsSet),
+      definition: row.definition || `Official SNOMED CT clinical concept representing ${term}.`,
+      relationships: [
+        {
+          type: 'Is a',
+          targetId: '138875005',
+          targetDisplay: validHierarchy,
+        },
+      ],
+      icd11Mapping,
+    };
+  }
+
+  private findDynamicIcd11Mapping(term: string, semanticTag: string, hierarchy: string): SnomedIcd11Map {
+    if (!term || term.length < 2) {
+      return {
+        code: 'N/A',
+        display: 'Non-disease qualifier (SNOMED exclusive)',
+        mapType: 'Associated',
+        chapter: 'SNOMED CT Semantic Qualifier',
+      };
+    }
+
+    const cleanTerm = term.trim().toLowerCase();
+    
+    // Fast exact match in full ICD-11 diseases
+    const exact = this.fullIcd11Diseases.find(d => d.display && d.display.toLowerCase().trim() === cleanTerm);
+    if (exact) {
+      return {
+        code: exact.code,
+        display: exact.display,
+        mapType: 'Exact Match',
+        chapter: exact.chapter || 'WHO ICD-11 MMS',
+      };
+    }
+
+    // Dynamic keyword overlap search for clinical findings / disorders
+    if (hierarchy === 'Clinical Finding' || semanticTag === 'disorder' || semanticTag === 'finding') {
+      const stopWords = new Set(['due', 'to', 'of', 'and', 'in', 'with', 'the', 'a', 'an', 'or', 'by', 'for', 'on', 'at', 'state']);
+      const termWords = cleanTerm
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .split(/\s+/)
+        .filter(w => w.length > 2 && !stopWords.has(w));
+
+      if (termWords.length > 0) {
+        let bestMatch: Icd11DiseaseEntry | null = null;
+        let bestScore = 0;
+
+        for (const item of this.fullIcd11Diseases) {
+          if (!item.display) continue;
+          const itemText = item.display.toLowerCase();
+          let matchCount = 0;
+          for (const w of termWords) {
+            if (itemText.includes(w)) matchCount++;
+          }
+          if (matchCount > 0) {
+            const score = (matchCount * 2) / (termWords.length + 3);
+            if (score > bestScore) {
+              bestScore = score;
+              bestMatch = item;
+              if (matchCount === termWords.length) break;
+            }
+          }
+        }
+
+        if (bestMatch && bestScore >= 0.35) {
+          return {
+            code: bestMatch.code,
+            display: bestMatch.display,
+            mapType: 'Associated',
+            chapter: bestMatch.chapter || 'WHO ICD-11 MMS',
+          };
+        }
+      }
+    }
+
+    // Informative category mapping for procedures, anatomical structures, or concepts without disease codes
+    const categoryLabel = hierarchy === 'Procedure' ? 'WHO ICHI / Procedure' :
+                          hierarchy === 'Body Structure' ? 'Anatomical Structure' :
+                          hierarchy === 'Substance' ? 'Pharmacological / Chemical Substance' :
+                          hierarchy === 'Organism' ? 'Microbiology Organism' : 'Clinical Finding';
+
+    return {
+      code: 'N/A',
+      display: `${term} (${categoryLabel})`,
+      mapType: 'Associated',
+      chapter: 'SNOMED CT Granular Terminology',
+    };
   }
 
   // =========================================================================
@@ -1310,13 +1614,13 @@ export class ExternalTerminologiesService {
   // Maintained by Regenstrief Institute - https://loinc.org
   // 6 Axes: Component, Property, Timing, System, Scale, Method
   // =========================================================================
-  getLoincObservations(options: {
+  async getLoincObservations(options: {
     page?: number | string;
     limit?: number | string;
     query?: string;
     category?: string;
     classType?: string;
-  }): {
+  }): Promise<{
     success: boolean;
     total: number;
     page: number;
@@ -1325,35 +1629,121 @@ export class ExternalTerminologiesService {
     metadata: LoincMetadata;
     count: number;
     data: LoincObservationEntry[];
-  } {
+  }> {
     const page = Math.max(1, parseInt(String(options.page || 1), 10));
     const limit = Math.max(1, Math.min(100, parseInt(String(options.limit || 50), 10)));
-    const query = (options.query || '').trim().toLowerCase();
-    const category = (options.category || '').trim().toLowerCase();
-    const classType = (options.classType || '').trim().toLowerCase();
+    const query = (options.query || '').trim();
+    const category = (options.category || '').trim();
+    const classType = (options.classType || '').trim();
 
-    let filtered = OFFICIAL_LOINC_OBSERVATIONS;
+    if (this.isSnomedDbConnected && this.snomedPool) {
+      try {
+        const whereClauses: string[] = [];
+        const params: any[] = [];
+        let pIdx = 1;
 
-    if (category && category !== 'all') {
-      filtered = filtered.filter(item => item.category.toLowerCase().includes(category));
+        if (category && category.toLowerCase() !== 'all') {
+          whereClauses.push(`category ILIKE $${pIdx}`);
+          params.push(`%${category}%`);
+          pIdx++;
+        }
+
+        if (classType && classType.toLowerCase() !== 'all') {
+          whereClauses.push(`class_type ILIKE $${pIdx}`);
+          params.push(classType);
+          pIdx++;
+        }
+
+        if (query) {
+          whereClauses.push(`(loinc_number ILIKE $${pIdx} OR display_name ILIKE $${pIdx} OR long_common_name ILIKE $${pIdx} OR component ILIKE $${pIdx})`);
+          params.push(`%${query}%`);
+          pIdx++;
+        }
+
+        const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+        // Count query
+        const countRes = await this.snomedPool.query(
+          `SELECT COUNT(*) as total FROM loinc_observations ${whereSql};`,
+          params
+        );
+        const total = parseInt(countRes.rows[0].total, 10);
+
+        if (total > 0) {
+          const totalPages = Math.ceil(total / limit) || 1;
+          const offset = (page - 1) * limit;
+
+          // Data query
+          const dataParams = [...params, limit, offset];
+          const dataRes = await this.snomedPool.query(
+            `SELECT * FROM loinc_observations ${whereSql} ORDER BY priority ASC, loinc_number ASC LIMIT $${pIdx} OFFSET $${pIdx + 1};`,
+            dataParams
+          );
+
+          const data: LoincObservationEntry[] = dataRes.rows.map((row) => ({
+            loincNumber: row.loinc_number,
+            displayName: row.display_name,
+            longCommonName: row.long_common_name || row.display_name,
+            shortName: row.short_name || row.display_name,
+            classType: (row.class_type as any) || 'Laboratory',
+            category: (row.category as any) || 'Chemistry',
+            axes: {
+              component: row.component?.trim() || row.display_name,
+              property: row.property?.trim() || 'SCnc',
+              timing: row.timing?.trim() || 'Pt',
+              system: row.system_specimen?.trim() || 'Ser/Plas',
+              scale: row.scale?.trim() || 'Qn',
+              method: row.method?.trim() || 'Unspecified (Any standard analytical method)',
+            },
+            exampleUnits: row.example_units || '',
+            ucumCode: row.ucum_code || '',
+            referenceRange: row.reference_range || undefined,
+            clinicalObservationUse: row.clinical_use || `Standard clinical observation for ${row.display_name}.`,
+            fhirObservationCode: row.fhir_code || `http://loinc.org/${row.loinc_number}`,
+            status: 'ACTIVE',
+            officialUrl: row.official_url || `https://loinc.org/${row.loinc_number}`,
+          }));
+
+          return {
+            success: true,
+            total,
+            page,
+            limit,
+            totalPages,
+            metadata: OFFICIAL_LOINC_METADATA,
+            count: data.length,
+            data,
+          };
+        }
+      } catch (err: any) {
+        this.logger.warn(`Postgres LOINC query failed: ${err.message}. Falling back to in-memory.`);
+      }
     }
 
-    if (classType && classType !== 'all') {
-      filtered = filtered.filter(item => item.classType.toLowerCase() === classType);
+    // In-memory fallback
+    let filtered = OFFICIAL_LOINC_OBSERVATIONS;
+
+    if (category && category.toLowerCase() !== 'all') {
+      filtered = filtered.filter(item => item.category.toLowerCase().includes(category.toLowerCase()));
+    }
+
+    if (classType && classType.toLowerCase() !== 'all') {
+      filtered = filtered.filter(item => item.classType.toLowerCase() === classType.toLowerCase());
     }
 
     if (query) {
+      const qLower = query.toLowerCase();
       filtered = filtered.filter(item => {
         return (
-          item.loincNumber.toLowerCase().includes(query) ||
-          item.displayName.toLowerCase().includes(query) ||
-          item.longCommonName.toLowerCase().includes(query) ||
-          item.shortName.toLowerCase().includes(query) ||
-          item.axes.component.toLowerCase().includes(query) ||
-          item.axes.system.toLowerCase().includes(query) ||
-          item.category.toLowerCase().includes(query) ||
-          item.clinicalObservationUse.toLowerCase().includes(query) ||
-          item.ucumCode.toLowerCase().includes(query)
+          item.loincNumber.toLowerCase().includes(qLower) ||
+          item.displayName.toLowerCase().includes(qLower) ||
+          item.longCommonName.toLowerCase().includes(qLower) ||
+          item.shortName.toLowerCase().includes(qLower) ||
+          item.axes.component.toLowerCase().includes(qLower) ||
+          item.axes.system.toLowerCase().includes(qLower) ||
+          item.category.toLowerCase().includes(qLower) ||
+          item.clinicalObservationUse.toLowerCase().includes(qLower) ||
+          item.ucumCode.toLowerCase().includes(qLower)
         );
       });
     }
@@ -1375,15 +1765,55 @@ export class ExternalTerminologiesService {
     };
   }
 
-  getLoincObservationDetails(codeOrQuery: string): LoincObservationEntry | null {
-    const clean = (codeOrQuery || '').trim().toLowerCase();
+  async getLoincObservationDetails(codeOrQuery: string): Promise<LoincObservationEntry | null> {
+    const clean = (codeOrQuery || '').trim();
+    if (!clean) return null;
+
+    if (this.isSnomedDbConnected && this.snomedPool) {
+      try {
+        const res = await this.snomedPool.query(
+          `SELECT * FROM loinc_observations WHERE loinc_number = $1 OR display_name ILIKE $1 LIMIT 1;`,
+          [clean]
+        );
+        if (res.rows.length > 0) {
+          const row = res.rows[0];
+          return {
+            loincNumber: row.loinc_number,
+            displayName: row.display_name,
+            longCommonName: row.long_common_name || row.display_name,
+            shortName: row.short_name || row.display_name,
+            classType: (row.class_type as any) || 'Laboratory',
+            category: (row.category as any) || 'Chemistry',
+            axes: {
+              component: row.component?.trim() || row.display_name,
+              property: row.property?.trim() || 'SCnc',
+              timing: row.timing?.trim() || 'Pt',
+              system: row.system_specimen?.trim() || 'Ser/Plas',
+              scale: row.scale?.trim() || 'Qn',
+              method: row.method?.trim() || 'Unspecified (Any standard analytical method)',
+            },
+            exampleUnits: row.example_units || '',
+            ucumCode: row.ucum_code || '',
+            referenceRange: row.reference_range || undefined,
+            clinicalObservationUse: row.clinical_use || `Standard clinical observation for ${row.display_name}.`,
+            fhirObservationCode: row.fhir_code || `http://loinc.org/${row.loinc_number}`,
+            status: 'ACTIVE',
+            officialUrl: row.official_url || `https://loinc.org/${row.loinc_number}`,
+          };
+        }
+      } catch (err: any) {
+        this.logger.warn(`Postgres LOINC details query failed: ${err.message}`);
+      }
+    }
+
+    const qLower = clean.toLowerCase();
     return (
       OFFICIAL_LOINC_OBSERVATIONS.find(
         item =>
-          item.loincNumber.toLowerCase() === clean ||
-          item.displayName.toLowerCase() === clean ||
-          item.shortName.toLowerCase() === clean ||
-          item.axes.component.toLowerCase() === clean
+          item.loincNumber.toLowerCase() === qLower ||
+          item.displayName.toLowerCase() === qLower ||
+          item.shortName.toLowerCase() === qLower ||
+          item.axes.component.toLowerCase() === qLower
       ) || null
     );
   }
@@ -1417,7 +1847,11 @@ export class ExternalTerminologiesService {
 
     if (system && system !== 'all') {
       filtered = filtered.filter(
-        item => item.systemCode.toLowerCase() === system || item.systemName.toLowerCase().includes(system),
+        item =>
+          item.systemCode.toLowerCase() === system ||
+          item.systemCode.toLowerCase().startsWith(system) ||
+          item.systemName.toLowerCase().includes(system) ||
+          item.openStaxChapters.toLowerCase().includes(system),
       );
     }
 

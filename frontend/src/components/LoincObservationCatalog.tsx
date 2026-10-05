@@ -97,7 +97,7 @@ export const LoincObservationCatalog: React.FC = () => {
             </h1>
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-cyan-100 text-cyan-800 dark:bg-cyan-950/80 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-800 shadow-xs">
               <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
-              Regenstrief LOINC 2.78
+              Regenstrief LOINC 2.78 ({total > 0 ? `${total.toLocaleString()} Active Standards` : 'Official Database'})
             </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -202,6 +202,9 @@ export const LoincObservationCatalog: React.FC = () => {
               <option value="Vital">Vital Signs</option>
               <option value="Urinalysis">Urinalysis</option>
               <option value="Endocrine">Endocrine & Metabolic</option>
+              <option value="Serology">Serology & Infectious</option>
+              <option value="Blood Gas">Blood Gas & Pulmonary</option>
+              <option value="Toxicology">Toxicology & Therapeutic Drugs</option>
             </select>
           </div>
 
@@ -225,8 +228,11 @@ export const LoincObservationCatalog: React.FC = () => {
         {/* Results Count & Scope Note */}
         <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 px-1">
           <div>
-            Showing <strong className="text-slate-900 dark:text-white">{observations.length}</strong> of{' '}
-            <strong className="text-slate-900 dark:text-white">{total}</strong> observation standards
+            Showing{' '}
+            <strong className="text-slate-900 dark:text-white">
+              {total === 0 ? 0 : `${(page - 1) * limit + 1}–${Math.min(page * limit, total)}`}
+            </strong>{' '}
+            of <strong className="text-slate-900 dark:text-white">{total}</strong> observation standards
             {debouncedQuery && (
               <span className="ml-2 px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-slate-600 dark:text-slate-300">
                 &quot;{debouncedQuery}&quot;
@@ -325,7 +331,15 @@ export const LoincObservationCatalog: React.FC = () => {
                             ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
                             : item.category === 'Urinalysis'
                             ? 'bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 border-purple-200 dark:border-purple-800'
-                            : 'bg-teal-50 text-teal-700 dark:bg-teal-950/50 dark:text-teal-300 border-teal-200 dark:border-teal-800'
+                            : item.category === 'Endocrine & Metabolic'
+                            ? 'bg-teal-50 text-teal-700 dark:bg-teal-950/50 dark:text-teal-300 border-teal-200 dark:border-teal-800'
+                            : item.category === 'Serology & Infectious'
+                            ? 'bg-fuchsia-50 text-fuchsia-700 dark:bg-fuchsia-950/50 dark:text-fuchsia-300 border-fuchsia-200 dark:border-fuchsia-800'
+                            : item.category === 'Blood Gas & Pulmonary'
+                            ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300 border-sky-200 dark:border-sky-800'
+                            : item.category === 'Toxicology & Therapeutic Drugs'
+                            ? 'bg-orange-50 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300 border-orange-200 dark:border-orange-800'
+                            : 'bg-slate-50 text-slate-700 dark:bg-slate-950/50 dark:text-slate-300 border-slate-200 dark:border-slate-800'
                         }`}
                       >
                         {item.category}
@@ -502,7 +516,7 @@ export const LoincObservationCatalog: React.FC = () => {
                       <span>1. Component (Analyte)</span>
                     </div>
                     <p className="font-bold text-slate-900 dark:text-white text-xs pl-5">
-                      {selectedItemForModal.axes.component}
+                      {selectedItemForModal.axes.component?.trim() || selectedItemForModal.displayName}
                     </p>
                   </div>
 
@@ -513,7 +527,7 @@ export const LoincObservationCatalog: React.FC = () => {
                       <span>2. Property (Kind of Quantity)</span>
                     </div>
                     <p className="font-bold text-slate-900 dark:text-white text-xs pl-5">
-                      {selectedItemForModal.axes.property}
+                      {selectedItemForModal.axes.property?.trim() || 'SCnc (Substance concentration)'}
                     </p>
                   </div>
 
@@ -524,7 +538,7 @@ export const LoincObservationCatalog: React.FC = () => {
                       <span>3. Timing (Time Aspect)</span>
                     </div>
                     <p className="font-bold text-slate-900 dark:text-white text-xs pl-5">
-                      {selectedItemForModal.axes.timing}
+                      {selectedItemForModal.axes.timing?.trim() || 'Pt (Point in time)'}
                     </p>
                   </div>
 
@@ -535,7 +549,7 @@ export const LoincObservationCatalog: React.FC = () => {
                       <span>4. System (Specimen / Body Site)</span>
                     </div>
                     <p className="font-bold text-slate-900 dark:text-white text-xs pl-5">
-                      {selectedItemForModal.axes.system}
+                      {selectedItemForModal.axes.system?.trim() || 'Ser/Plas (Serum or Plasma)'}
                     </p>
                   </div>
 
@@ -546,19 +560,31 @@ export const LoincObservationCatalog: React.FC = () => {
                       <span>5. Scale (Scale Type)</span>
                     </div>
                     <p className="font-bold text-slate-900 dark:text-white text-xs pl-5">
-                      {selectedItemForModal.axes.scale}
+                      {selectedItemForModal.axes.scale?.trim() || 'Qn (Quantitative)'}
                     </p>
                   </div>
 
                   {/* Axis 6: Method */}
                   <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 space-y-1">
-                    <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-semibold text-[11px]">
-                      <Activity className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>6. Method (Analytical Technique)</span>
+                    <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 font-semibold text-[11px]">
+                      <div className="flex items-center gap-1.5">
+                        <Activity className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>6. Method (Analytical Technique)</span>
+                      </div>
+                      {(!selectedItemForModal.axes.method || selectedItemForModal.axes.method.toLowerCase().includes('unspecified')) && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-normal">
+                          Optional in LOINC
+                        </span>
+                      )}
                     </div>
                     <p className="font-bold text-slate-900 dark:text-white text-xs pl-5">
-                      {selectedItemForModal.axes.method}
+                      {selectedItemForModal.axes.method?.trim() || 'Unspecified (Any standard analytical method)'}
                     </p>
+                    {(!selectedItemForModal.axes.method || selectedItemForModal.axes.method.toLowerCase().includes('unspecified')) && (
+                      <p className="text-[10px] text-slate-400 pl-5">
+                        Per Regenstrief LOINC rules, Method is optional and left unspecified when results are comparable across standard methods.
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -612,6 +638,7 @@ export const LoincObservationCatalog: React.FC = () => {
                 href={selectedItemForModal.officialUrl}
                 target="_blank"
                 rel="noopener noreferrer"
+                referrerPolicy="no-referrer"
                 className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-cyan-600 hover:bg-cyan-700 text-white flex items-center gap-1.5 shadow-sm transition-colors"
               >
                 <BookOpen className="w-3.5 h-3.5" />

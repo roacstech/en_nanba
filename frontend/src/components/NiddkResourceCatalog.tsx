@@ -25,6 +25,25 @@ import {
   NiddkLicensingInfo,
 } from '../lib/api';
 
+const getCategoryBadgeClass = (category: string) => {
+  switch (category) {
+    case 'Diabetes & Endocrine':
+      return 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border-amber-200 dark:border-amber-800';
+    case 'Digestive Diseases':
+      return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
+    case 'Kidney Diseases':
+      return 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border-blue-200 dark:border-blue-800';
+    case 'Liver Diseases':
+      return 'bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 border-purple-200 dark:border-purple-800';
+    case 'Urologic Diseases':
+      return 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/50 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800';
+    case 'Weight Management & Nutrition':
+      return 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border-rose-200 dark:border-rose-800';
+    default:
+      return 'bg-slate-50 text-slate-700 dark:bg-slate-900 dark:text-slate-300 border-slate-200 dark:border-slate-800';
+  }
+};
+
 export const NiddkResourceCatalog: React.FC = () => {
   const [resources, setResources] = useState<NiddkDiseaseResource[]>([]);
   const [licensing, setLicensing] = useState<NiddkLicensingInfo | null>(null);
@@ -191,6 +210,8 @@ export const NiddkResourceCatalog: React.FC = () => {
               <option value="Digestive">Digestive Diseases</option>
               <option value="Kidney">Kidney Diseases</option>
               <option value="Liver">Liver Diseases</option>
+              <option value="Urologic">Urologic Diseases</option>
+              <option value="Weight">Weight Management & Nutrition</option>
             </select>
           </div>
         </div>
@@ -198,8 +219,11 @@ export const NiddkResourceCatalog: React.FC = () => {
         {/* Results Count */}
         <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 px-1">
           <div>
-            Showing <strong className="text-slate-900 dark:text-white">{resources.length}</strong> of{' '}
-            <strong className="text-slate-900 dark:text-white">{total}</strong> health resources
+            Showing{' '}
+            <strong className="text-slate-900 dark:text-white">
+              {total > 0 ? `${(page - 1) * limit + 1}–${Math.min(page * limit, total)}` : 0}
+            </strong>{' '}
+            of <strong className="text-slate-900 dark:text-white">{total}</strong> health resources
             {debouncedQuery && (
               <span className="ml-2 px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-slate-600 dark:text-slate-300">
                 &quot;{debouncedQuery}&quot;
@@ -276,15 +300,9 @@ export const NiddkResourceCatalog: React.FC = () => {
                     {/* Category */}
                     <td className="py-3 px-4 align-top whitespace-nowrap">
                       <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap ${
-                          res.category === 'Diabetes & Endocrine'
-                            ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border-amber-200 dark:border-amber-800'
-                            : res.category === 'Digestive Diseases'
-                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                            : res.category === 'Kidney Diseases'
-                            ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border-blue-200 dark:border-blue-800'
-                            : 'bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 border-purple-200 dark:border-purple-800'
-                        }`}
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap ${getCategoryBadgeClass(
+                          res.category
+                        )}`}
                       >
                         {res.category}
                       </span>
@@ -428,7 +446,11 @@ export const NiddkResourceCatalog: React.FC = () => {
             {/* Modal Header */}
             <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-start justify-between gap-4 bg-slate-50/50 dark:bg-slate-950/40">
               <div className="space-y-1">
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+                <span
+                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getCategoryBadgeClass(
+                    selectedResourceForModal.category
+                  )}`}
+                >
                   {selectedResourceForModal.category}
                 </span>
                 <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white">

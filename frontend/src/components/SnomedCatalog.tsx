@@ -89,6 +89,25 @@ export const SnomedCatalog: React.FC = () => {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const getHierarchyBadgeClass = (hierarchy: string) => {
+    switch (hierarchy) {
+      case 'Clinical Finding':
+        return 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border-amber-200 dark:border-amber-800';
+      case 'Procedure':
+        return 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border-blue-200 dark:border-blue-800';
+      case 'Body Structure':
+        return 'bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 border-purple-200 dark:border-purple-800';
+      case 'Substance':
+        return 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border-rose-200 dark:border-rose-800';
+      case 'Organism':
+        return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
+      case 'Observable Entity':
+        return 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/50 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800';
+      default:
+        return 'bg-slate-50 text-slate-700 dark:bg-slate-900 dark:text-slate-300 border-slate-200 dark:border-slate-800';
+    }
+  };
+
   return (
     <div className="space-y-4 animate-fadeIn pb-16">
       {/* ========================================================================= */}
@@ -293,10 +312,13 @@ export const SnomedCatalog: React.FC = () => {
               }}
               className="w-full pl-10 pr-8 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all cursor-pointer appearance-none"
             >
-              <option value="ALL">All Hierarchies</option>
+              <option value="ALL">All Hierarchies (378,500+ Concepts)</option>
               <option value="Clinical Finding">Clinical Finding (Disorders & Symptoms)</option>
               <option value="Procedure">Procedure (Interventions & Surgeries)</option>
               <option value="Body Structure">Body Structure (Anatomy)</option>
+              <option value="Substance">Substance (Drugs & Biological Products)</option>
+              <option value="Organism">Organism (Pathogens & Infectious Agents)</option>
+              <option value="Observable Entity">Observable Entity (Clinical Observations)</option>
             </select>
           </div>
         </div>
@@ -304,8 +326,11 @@ export const SnomedCatalog: React.FC = () => {
         {/* Results Count */}
         <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 px-1">
           <div>
-            Showing <strong className="text-slate-900 dark:text-white">{concepts.length}</strong> of{' '}
-            <strong className="text-slate-900 dark:text-white">{total}</strong> concepts
+            Showing{' '}
+            <strong className="text-slate-900 dark:text-white">
+              {total > 0 ? `${(page - 1) * limit + 1}–${Math.min(page * limit, total)}` : 0}
+            </strong>{' '}
+            of <strong className="text-slate-900 dark:text-white">{total}</strong> concepts
             {debouncedQuery && (
               <span className="ml-2 px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-slate-600 dark:text-slate-300">
                 &quot;{debouncedQuery}&quot;
@@ -401,13 +426,9 @@ export const SnomedCatalog: React.FC = () => {
                     {/* Hierarchy */}
                     <td className="py-3 px-4 align-top">
                       <span
-                        className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${
-                          concept.hierarchy === 'Clinical Finding'
-                            ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border-amber-200 dark:border-amber-800'
-                            : concept.hierarchy === 'Procedure'
-                            ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border-blue-200 dark:border-blue-800'
-                            : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                        }`}
+                        className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${getHierarchyBadgeClass(
+                          concept.hierarchy
+                        )}`}
                       >
                         {concept.hierarchy}
                       </span>
@@ -416,35 +437,50 @@ export const SnomedCatalog: React.FC = () => {
                     {/* Complementary ICD-11 */}
                     <td className="py-3 px-4 align-top">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-mono font-bold text-[11px] bg-blue-100 dark:bg-blue-950/70 text-blue-800 dark:text-blue-300 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800">
-                          {concept.icd11Mapping.code}
-                        </span>
-                        <span className="text-[10px] text-slate-400">
-                          ({concept.icd11Mapping.mapType})
-                        </span>
+                        {concept.icd11Mapping.code && concept.icd11Mapping.code !== 'N/A' && concept.icd11Mapping.code !== 'Pending Map' ? (
+                          <>
+                            <span className="font-mono font-bold text-[11px] bg-blue-100 dark:bg-blue-950/70 text-blue-800 dark:text-blue-300 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800">
+                              {concept.icd11Mapping.code}
+                            </span>
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate max-w-[160px]" title={concept.icd11Mapping.display}>
+                              {concept.icd11Mapping.display}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-[10px] text-slate-400 italic">
+                            Non-disease clinical entity
+                          </span>
+                        )}
                       </div>
                     </td>
 
                     {/* Synonyms */}
                     <td className="py-3 px-4 align-top">
-                      <div className="flex flex-wrap gap-1">
-                        {concept.synonyms
-                          .filter((syn) => syn.toLowerCase() !== concept.preferredTerm.toLowerCase())
-                          .slice(0, 2)
-                          .map((syn, idx) => (
-                            <span
-                              key={idx}
-                              className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] text-slate-600 dark:text-slate-400"
-                            >
-                              {syn}
+                      {concept.synonyms && concept.synonyms.filter((syn) => syn.toLowerCase() !== concept.preferredTerm.toLowerCase()).length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {concept.synonyms
+                            .filter((syn) => syn.toLowerCase() !== concept.preferredTerm.toLowerCase())
+                            .slice(0, 2)
+                            .map((syn, idx) => (
+                              <span
+                                key={idx}
+                                className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] text-slate-600 dark:text-slate-400 font-medium max-w-[180px] truncate"
+                                title={syn}
+                              >
+                                {syn}
+                              </span>
+                            ))}
+                          {concept.synonyms.filter((syn) => syn.toLowerCase() !== concept.preferredTerm.toLowerCase()).length > 2 && (
+                            <span className="text-[10px] text-slate-400 font-medium self-center">
+                              +{concept.synonyms.filter((syn) => syn.toLowerCase() !== concept.preferredTerm.toLowerCase()).length - 2}
                             </span>
-                          ))}
-                        {concept.synonyms.filter((syn) => syn.toLowerCase() !== concept.preferredTerm.toLowerCase()).length > 2 && (
-                          <span className="text-[10px] text-slate-400 font-medium self-center">
-                            +{concept.synonyms.filter((syn) => syn.toLowerCase() !== concept.preferredTerm.toLowerCase()).length - 2}
-                          </span>
-                        )}
-                      </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 italic">
+                          Primary term only
+                        </span>
+                      )}
                     </td>
 
                     {/* Action Button */}
@@ -481,7 +517,7 @@ export const SnomedCatalog: React.FC = () => {
                 <option value={10}>10</option>
                 <option value={25}>25</option>
                 <option value={50}>50</option>
-                <option value={100}>100</option>
+                {total > 50 && <option value={100}>100</option>}
               </select>
             </div>
 
@@ -613,44 +649,60 @@ export const SnomedCatalog: React.FC = () => {
                 <span className="text-xs font-bold text-blue-900 dark:text-blue-200 block">
                   Complementary WHO ICD-11 Mapping
                 </span>
-                <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-1 rounded bg-blue-600 text-white font-mono font-bold text-xs shadow-sm">
-                    {selectedConceptForModal.icd11Mapping.code}
-                  </span>
-                  <span className="font-semibold text-slate-900 dark:text-white">
-                    {selectedConceptForModal.icd11Mapping.display}
-                  </span>
-                  <span className="text-slate-400 text-[11px]">
-                    ({selectedConceptForModal.icd11Mapping.mapType})
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  {selectedConceptForModal.icd11Mapping.chapter}
-                </p>
+                {selectedConceptForModal.icd11Mapping.code && selectedConceptForModal.icd11Mapping.code !== 'N/A' && selectedConceptForModal.icd11Mapping.code !== 'Pending Map' ? (
+                  <>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="px-2.5 py-1 rounded bg-blue-600 text-white font-mono font-bold text-xs shadow-sm">
+                        {selectedConceptForModal.icd11Mapping.code}
+                      </span>
+                      <span className="font-semibold text-slate-900 dark:text-white">
+                        {selectedConceptForModal.icd11Mapping.display}
+                      </span>
+                      <span className="text-slate-400 text-[11px]">
+                        ({selectedConceptForModal.icd11Mapping.mapType})
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      {selectedConceptForModal.icd11Mapping.chapter}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    This SNOMED CT clinical concept is a qualifier, observation, or anatomical entity with no direct statistical disease code in WHO ICD-11 MMS.
+                  </p>
+                )}
               </div>
 
               {/* Synonyms */}
               <div className="space-y-1">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Synonyms
+                  Synonyms / Alternative Terms
                 </h4>
-                <div className="flex flex-wrap gap-1.5">
-                  {selectedConceptForModal.synonyms.map((syn, idx) => (
-                    <span
-                      key={idx}
-                      className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs"
-                    >
-                      {syn}
-                    </span>
-                  ))}
-                </div>
+                {selectedConceptForModal.synonyms && selectedConceptForModal.synonyms.filter(s => s.toLowerCase() !== selectedConceptForModal.preferredTerm.toLowerCase()).length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedConceptForModal.synonyms
+                      .filter(s => s.toLowerCase() !== selectedConceptForModal.preferredTerm.toLowerCase())
+                      .map((syn, idx) => (
+                        <span
+                          key={idx}
+                          className="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                        >
+                          {syn}
+                        </span>
+                      ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500 dark:text-slate-400 italic">
+                    Canonical standard clinical term: &ldquo;{selectedConceptForModal.preferredTerm}&rdquo;
+                  </p>
+                )}
               </div>
             </div>
 
             {/* Modal Footer */}
             <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 flex items-center justify-between gap-3">
               <a
-                href={`https://browser.ihtsdotools.org/?perspective=full&conceptId1=${selectedConceptForModal.conceptId}`}
+                href={`https://browser.ihtsdotools.org/?perspective=full&conceptId1=${selectedConceptForModal.conceptId}&edition=MAIN`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-teal-600 hover:bg-teal-700 text-white flex items-center gap-1.5 shadow-sm transition-colors"

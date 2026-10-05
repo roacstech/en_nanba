@@ -87,7 +87,7 @@ export class NormalizationController {
     @Query('query') query?: string,
     @Query('hierarchy') hierarchy?: string,
   ) {
-    return this.externalTerminologies.getSnomedCatalog({
+    return await this.externalTerminologies.getSnomedCatalog({
       page: page ? parseInt(page, 10) : 1,
       limit: limit ? parseInt(limit, 10) : 50,
       query: q || query,
@@ -97,7 +97,7 @@ export class NormalizationController {
 
   @Get('normalize/snomed/concept-details')
   async getSnomedConceptDetails(@Query('id') id: string) {
-    const concept = this.externalTerminologies.getSnomedConceptDetails(id || '');
+    const concept = await this.externalTerminologies.getSnomedConceptDetails(id || '');
     return {
       success: !!concept,
       data: concept,
@@ -175,7 +175,7 @@ export class NormalizationController {
 
   @Get('normalize/loinc/observation-details')
   async getLoincObservationDetails(@Query('code') code: string, @Query('id') id?: string) {
-    const observation = this.externalTerminologies.getLoincObservationDetails(code || id || '');
+    const observation = await this.externalTerminologies.getLoincObservationDetails(code || id || '');
     return {
       success: !!observation,
       data: observation,

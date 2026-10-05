@@ -190,15 +190,22 @@ export const AnatomyReferenceCatalog: React.FC = () => {
               }}
               className="w-full pl-10 pr-8 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all cursor-pointer appearance-none"
             >
-              <option value="ALL">All Anatomical Systems</option>
-              <option value="CARDIO">Cardiovascular System</option>
-              <option value="ENDO">Endocrine System</option>
-              <option value="RENAL">Urinary & Renal System</option>
-              <option value="RESP">Respiratory System</option>
-              <option value="NEURO">Nervous System</option>
-              <option value="DIGEST">Digestive System</option>
-              <option value="IMMUNE">Lymphatic & Immune</option>
-              <option value="MSK">Musculoskeletal System</option>
+              <option value="ALL">All Anatomical Systems & Chapters</option>
+              <option value="ORG">Levels of Organization & Tissues (Ch 1–4)</option>
+              <option value="INTEG">Integumentary System (Ch 5)</option>
+              <option value="SKEL">Skeletal System & Bones (Ch 6–8)</option>
+              <option value="JOINTS">Joints & Articular Mechanics (Ch 9)</option>
+              <option value="MUSCLE">Muscular System & Dynamics (Ch 10–11)</option>
+              <option value="NEURO">Nervous System & Special Senses (Ch 12–16)</option>
+              <option value="ENDO">Endocrine System & Hormones (Ch 17)</option>
+              <option value="CARDIO">Cardiovascular & Blood (Ch 18–20)</option>
+              <option value="IMMUNE">Lymphatic & Immune System (Ch 21)</option>
+              <option value="RESP">Respiratory System (Ch 22)</option>
+              <option value="DIGEST">Digestive System & GI Tract (Ch 23)</option>
+              <option value="METAB">Metabolism & Nutrition (Ch 24)</option>
+              <option value="RENAL">Urinary & Renal System (Ch 25–26)</option>
+              <option value="REPRO">Reproductive Systems (Ch 27)</option>
+              <option value="DEV">Embryology & Development (Ch 28)</option>
             </select>
           </div>
         </div>
@@ -206,8 +213,11 @@ export const AnatomyReferenceCatalog: React.FC = () => {
         {/* Results Count & Governance Review Note */}
         <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 px-1">
           <div>
-            Showing <strong className="text-slate-900 dark:text-white">{references.length}</strong> of{' '}
-            <strong className="text-slate-900 dark:text-white">{total}</strong> anatomical scoping references
+            Showing{' '}
+            <strong className="text-slate-900 dark:text-white">
+              {total > 0 ? `${(page - 1) * limit + 1}–${Math.min(page * limit, total)}` : 0}
+            </strong>{' '}
+            of <strong className="text-slate-900 dark:text-white">{total}</strong> anatomical scoping references
             {debouncedQuery && (
               <span className="ml-2 px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-slate-600 dark:text-slate-300">
                 &quot;{debouncedQuery}&quot;
@@ -346,6 +356,7 @@ export const AnatomyReferenceCatalog: React.FC = () => {
                 <option value={10}>10</option>
                 <option value={25}>25</option>
                 <option value={50}>50</option>
+                <option value={100}>100</option>
               </select>
             </div>
 

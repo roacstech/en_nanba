@@ -28,6 +28,33 @@ import {
   NiceMetadataInfo,
 } from '../lib/api';
 
+const getDomainBadgeClass = (domain: string) => {
+  switch (domain) {
+    case 'Diabetes & Metabolism':
+      return 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border-amber-200 dark:border-amber-800';
+    case 'Cardiovascular':
+      return 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border-rose-200 dark:border-rose-800';
+    case 'Renal & Urology':
+      return 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border-blue-200 dark:border-blue-800';
+    case 'Respiratory':
+      return 'bg-teal-50 text-teal-700 dark:bg-teal-950/50 dark:text-teal-300 border-teal-200 dark:border-teal-800';
+    case 'Gastroenterology':
+      return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
+    case 'Neurology & CNS':
+      return 'bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 border-purple-200 dark:border-purple-800';
+    case 'Infections & Antimicrobial':
+      return 'bg-orange-50 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300 border-orange-200 dark:border-orange-800';
+    case 'Musculoskeletal':
+      return 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800';
+    case 'Oncology & Cancer':
+      return 'bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300 border-red-200 dark:border-red-800';
+    case 'Mental Health':
+      return 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/50 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800';
+    default:
+      return 'bg-slate-50 text-slate-700 dark:bg-slate-900 dark:text-slate-300 border-slate-200 dark:border-slate-800';
+  }
+};
+
 export const NiceGuidelineCatalog: React.FC = () => {
   const [guidelines, setGuidelines] = useState<NiceGuidelineEntry[]>([]);
   const [metadata, setMetadata] = useState<NiceMetadataInfo | null>(null);
@@ -194,6 +221,12 @@ export const NiceGuidelineCatalog: React.FC = () => {
               <option value="Cardiovascular">Cardiovascular</option>
               <option value="Renal">Renal & Urology</option>
               <option value="Respiratory">Respiratory</option>
+              <option value="Gastroenterology">Gastroenterology</option>
+              <option value="Neurology">Neurology & CNS</option>
+              <option value="Infections">Infections & Antimicrobial</option>
+              <option value="Musculoskeletal">Musculoskeletal</option>
+              <option value="Oncology">Oncology & Cancer</option>
+              <option value="Mental Health">Mental Health</option>
             </select>
           </div>
         </div>
@@ -201,8 +234,11 @@ export const NiceGuidelineCatalog: React.FC = () => {
         {/* Results Count */}
         <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 px-1">
           <div>
-            Showing <strong className="text-slate-900 dark:text-white">{guidelines.length}</strong> of{' '}
-            <strong className="text-slate-900 dark:text-white">{total}</strong> clinical guidelines
+            Showing{' '}
+            <strong className="text-slate-900 dark:text-white">
+              {total > 0 ? `${(page - 1) * limit + 1}–${Math.min(page * limit, total)}` : 0}
+            </strong>{' '}
+            of <strong className="text-slate-900 dark:text-white">{total}</strong> clinical guidelines
             {debouncedQuery && (
               <span className="ml-2 px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-slate-600 dark:text-slate-300">
                 &quot;{debouncedQuery}&quot;
@@ -287,15 +323,9 @@ export const NiceGuidelineCatalog: React.FC = () => {
                     {/* Domain */}
                     <td className="py-3 px-4 align-top whitespace-nowrap">
                       <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap ${
-                          item.clinicalDomain === 'Diabetes & Metabolism'
-                            ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border-amber-200 dark:border-amber-800'
-                            : item.clinicalDomain === 'Cardiovascular'
-                            ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border-rose-200 dark:border-rose-800'
-                            : item.clinicalDomain === 'Renal & Urology'
-                            ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border-blue-200 dark:border-blue-800'
-                            : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                        }`}
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap ${getDomainBadgeClass(
+                          item.clinicalDomain
+                        )}`}
                       >
                         {item.clinicalDomain}
                       </span>
@@ -424,7 +454,11 @@ export const NiceGuidelineCatalog: React.FC = () => {
                   <span className="font-mono font-bold text-xs bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
                     {selectedGuidelineForModal.guidelineId}
                   </span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300 border border-violet-200 dark:border-violet-800">
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getDomainBadgeClass(
+                      selectedGuidelineForModal.clinicalDomain
+                    )}`}
+                  >
                     {selectedGuidelineForModal.clinicalDomain}
                   </span>
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
@@ -517,6 +551,15 @@ export const NiceGuidelineCatalog: React.FC = () => {
                 </ul>
               </div>
 
+              {/* Access Notice for WAF 403 Forbidden */}
+              <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 text-xs text-amber-800 dark:text-amber-300">
+                <Info className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                <div className="leading-relaxed">
+                  <span className="font-semibold block mb-0.5">Official Portal Regional Access Notice:</span>
+                  The UK NICE website (<code>nice.org.uk</code>) enforces AWS WAF geographic restrictions that return <code>403 Forbidden</code> on direct connections outside the United Kingdom. If you are browsing from outside the UK without a UK VPN, use the <strong>Global NCBI Bookshelf Mirror</strong> button below for free, unrestricted global access to the clinical evidence.
+                </div>
+              </div>
+
               {/* Jurisdiction Note */}
               <div className="p-3 rounded-xl bg-slate-100/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
                 <div className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200 mb-0.5">
@@ -528,17 +571,37 @@ export const NiceGuidelineCatalog: React.FC = () => {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 flex items-center justify-between gap-3">
-              <a
-                href={selectedGuidelineForModal.officialUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1.5 shadow-sm transition-colors"
-              >
-                <BookOpen className="w-3.5 h-3.5" />
-                <span>View on Official NICE Portal</span>
-                <ExternalLink className="w-3 h-3 opacity-80" />
-              </a>
+            <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <a
+                  href={
+                    selectedGuidelineForModal.ncbiUrl ||
+                    `https://www.ncbi.nlm.nih.gov/books/?term=NICE+guideline+${selectedGuidelineForModal.guidelineId}`
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  referrerPolicy="no-referrer"
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                  title="Open unrestricted worldwide mirror on NIH / NCBI Bookshelf"
+                >
+                  <Globe2 className="w-3.5 h-3.5" />
+                  <span>View on Global NCBI Mirror (Free / Worldwide)</span>
+                  <ExternalLink className="w-3 h-3 opacity-80" />
+                </a>
+
+                <a
+                  href={selectedGuidelineForModal.officialUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  referrerPolicy="no-referrer"
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+                  title="Direct UK NICE portal (Requires UK IP address or UK VPN)"
+                >
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>Official NICE UK Portal (UK / VPN)</span>
+                  <ExternalLink className="w-3 h-3 opacity-60" />
+                </a>
+              </div>
 
               <button
                 type="button"

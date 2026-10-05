@@ -206,7 +206,13 @@ export interface SnomedCatalogResponse {
 export interface NiddkDiseaseResource {
   id: string;
   title: string;
-  category: 'Diabetes & Endocrine' | 'Digestive Diseases' | 'Kidney Diseases' | 'Liver Diseases';
+  category:
+    | 'Diabetes & Endocrine'
+    | 'Digestive Diseases'
+    | 'Kidney Diseases'
+    | 'Liver Diseases'
+    | 'Urologic Diseases'
+    | 'Weight Management & Nutrition';
   plainLanguageSummary: string;
   candidatePlainLanguageTerms: string[];
   symptoms: string[];
@@ -250,7 +256,17 @@ export interface NicePathwayStep {
 export interface NiceGuidelineEntry {
   guidelineId: string;
   title: string;
-  clinicalDomain: 'Diabetes & Metabolism' | 'Cardiovascular' | 'Renal & Urology' | 'Respiratory' | 'Gastroenterology';
+  clinicalDomain:
+    | 'Diabetes & Metabolism'
+    | 'Cardiovascular'
+    | 'Renal & Urology'
+    | 'Respiratory'
+    | 'Gastroenterology'
+    | 'Neurology & CNS'
+    | 'Infections & Antimicrobial'
+    | 'Musculoskeletal'
+    | 'Oncology & Cancer'
+    | 'Mental Health';
   version: string;
   publishedDate: string;
   lastUpdated: string;
@@ -261,6 +277,7 @@ export interface NiceGuidelineEntry {
   pathwaySteps: NicePathwayStep[];
   decisionSupportRules: string[];
   officialUrl: string;
+  ncbiUrl?: string;
   relatedIcd11Code?: string;
   relatedSnomedId?: string;
 }
@@ -310,7 +327,9 @@ export interface LoincObservationEntry {
     | 'Vital Signs'
     | 'Urinalysis'
     | 'Endocrine & Metabolic'
-    | 'Serology & Infectious';
+    | 'Serology & Infectious'
+    | 'Blood Gas & Pulmonary'
+    | 'Toxicology & Therapeutic Drugs';
   axes: LoincAxisParts;
   exampleUnits: string;
   ucumCode: string;
