@@ -197,11 +197,16 @@ export class ExternalTerminologiesService implements OnModuleDestroy {
       let poolConfig: any;
 
       if (databaseUrl && databaseUrl.trim().length > 0) {
+        const isSslNeeded =
+          databaseUrl.includes('sslmode=require') ||
+          (this.configService.get<string>('POSTGRES_SSL') === 'true' && !databaseUrl.includes('sslmode=disable'));
+
         poolConfig = {
           connectionString: databaseUrl,
           max: 10,
           idleTimeoutMillis: 30000,
           connectionTimeoutMillis: 5000,
+          ...(isSslNeeded ? { ssl: { rejectUnauthorized: false } } : {}),
         };
       } else {
         const host = this.configService.get<string>('POSTGRES_HOST') || '147.93.30.32';

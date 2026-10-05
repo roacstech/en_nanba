@@ -73,3 +73,12 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Large Binary Archives & Raw Data Dumps (Persisted in PostgreSQL)
+*.zip
+*.xlsx
+*.pptx
+backend/src/normalization/data/SnomedINTL_GPSRelease_PRODUCTION_20260101T120000Z.txt
+backend/src/normalization/data/*.zip
+backend/src/normalization/data/*.xlsx
+

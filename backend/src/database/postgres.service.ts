@@ -112,23 +112,22 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
     if (databaseUrl && databaseUrl.trim().length > 0) {
       const isSslNeeded =
         databaseUrl.includes('sslmode=require') ||
-        (!databaseUrl.includes('localhost') && !databaseUrl.includes('127.0.0.1'));
+        (process.env.POSTGRES_SSL === 'true' && !databaseUrl.includes('sslmode=disable'));
 
       poolConfig = {
         connectionString: databaseUrl,
-        connectionTimeoutMillis: 3500,
+        connectionTimeoutMillis: 5000,
         ...(isSslNeeded ? { ssl: { rejectUnauthorized: false } } : {}),
       };
       this.connectionDetails = { host: 'Remote/Cloud PostgreSQL', database: 'Configured via URL' };
     } else {
-      const host = this.configService.get<string>('POSTGRES_HOST', 'localhost');
-      const port = this.configService.get<number>('POSTGRES_PORT', 5432);
-      const user = this.configService.get<string>('POSTGRES_USER', 'nanba_admin');
-      const password = this.configService.get<string>('POSTGRES_PASSWORD', 'nanba_secure_pass123');
+      const host = this.configService.get<string>('POSTGRES_HOST', '147.93.30.32');
+      const port = this.configService.get<number>('POSTGRES_PORT', 5435);
+      const user = this.configService.get<string>('POSTGRES_USER', 'postgres');
+      const password = this.configService.get<string>('POSTGRES_PASSWORD', 'Roacs@2026');
       const database = this.configService.get<string>('POSTGRES_DB', 'en_nanban_clinical');
-      const isRemote = host !== 'localhost' && host !== '127.0.0.1';
-      const sslEnv = this.configService.get<string>('POSTGRES_SSL');
-      const sslConfig = sslEnv === 'true' ? true : sslEnv === 'false' ? false : isRemote;
+      const sslEnv = this.configService.get<string>('POSTGRES_SSL', 'false');
+      const sslConfig = sslEnv === 'true';
 
       poolConfig = {
         host,
