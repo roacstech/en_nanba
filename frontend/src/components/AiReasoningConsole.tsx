@@ -80,8 +80,8 @@ export const AiReasoningConsole: React.FC<AiReasoningConsoleProps> = ({
               <h2 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
                 AI Orchestration & Clinical Reasoning
               </h2>
-              <span className="text-[10px] uppercase font-extrabold tracking-wider px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
-                Gemini 3.6 Flash + LangChain
+              <span className="text-[10px] uppercase font-extrabold tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300">
+                In-House Meta Llama 3.2 (nanba-clinical) + LangChain
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -99,7 +99,7 @@ export const AiReasoningConsole: React.FC<AiReasoningConsoleProps> = ({
           {isGenerating ? (
             <>
               <RefreshCw className="w-4 h-4 animate-spin" />
-              Running Gemini 3.6 Flash...
+              Running In-House AI (nanba-clinical)...
             </>
           ) : (
             <>
@@ -142,7 +142,7 @@ export const AiReasoningConsole: React.FC<AiReasoningConsoleProps> = ({
 
           <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-900/60 shadow-xs">
             <span className="text-[10px] font-extrabold text-blue-600 block">STEP 4</span>
-            <div className="font-extrabold text-slate-900 dark:text-white text-xs">Gemini 3.6 Synthesis</div>
+            <div className="font-extrabold text-slate-900 dark:text-white text-xs">nanba-clinical AI</div>
             <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">RAG Differential Diagnosis</p>
           </div>
 
@@ -445,7 +445,7 @@ export const AiReasoningConsole: React.FC<AiReasoningConsoleProps> = ({
           <Sparkles className="w-8 h-8 text-teal-400 mx-auto mb-3 animate-pulse" />
           <p className="font-semibold text-slate-200 text-sm">Ready to orchestrate clinical AI reasoning.</p>
           <p className="text-slate-400 mt-1 max-w-md mx-auto">
-            Click "Run Clinical Reasoning" to de-identify patient data, query Qdrant RAG guidelines, and generate an evidence-backed clinical action plan with Gemini 3.8 Flash.
+            Click "Run Clinical Reasoning" to de-identify patient data, query Qdrant RAG guidelines, and generate an evidence-backed clinical action plan with in-house Meta Llama 3.2 (nanba-clinical).
           </p>
         </div>
       )}

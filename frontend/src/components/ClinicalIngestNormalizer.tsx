@@ -110,7 +110,7 @@ export const ClinicalIngestNormalizer: React.FC<ClinicalIngestNormalizerProps> =
       const result = await api.ingestText(patientId, text, docType);
       setExtractedEntities(result.entities || []);
       setSuccessMessage(
-        `Gemini 3.6 Flash extracted and normalized ${result.entitiesCount} clinical entities across ICD-11, RxNorm, LOINC, UCUM & FHIR into Neo4j graph!`,
+        `In-House AI (nanba-clinical) extracted and normalized ${result.entitiesCount} clinical entities across ICD-11, RxNorm, LOINC, UCUM & FHIR into Neo4j graph!`,
       );
       onIngestSuccess();
     } catch (err: any) {
@@ -167,8 +167,8 @@ export const ClinicalIngestNormalizer: React.FC<ClinicalIngestNormalizerProps> =
               <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
                 Clinical Ingestion & Medical Standards Normalizer
               </h2>
-              <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
-                Gemini 3.6 Flash
+              <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300">
+                In-House AI (nanba-clinical)
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -200,7 +200,7 @@ export const ClinicalIngestNormalizer: React.FC<ClinicalIngestNormalizerProps> =
           </div>
           <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
             <span className="text-[10px] font-bold text-blue-600 block">STAGE 2</span>
-            <span className="font-extrabold text-slate-800 dark:text-slate-200">Gemini Extraction</span>
+            <span className="font-extrabold text-slate-800 dark:text-slate-200">nanba-clinical Extraction</span>
             <p className="text-[11px] text-slate-500 mt-0.5">NLP Entity Parsing</p>
           </div>
           <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
@@ -309,12 +309,12 @@ export const ClinicalIngestNormalizer: React.FC<ClinicalIngestNormalizerProps> =
               {isProcessing ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin" />
-                  Gemini 3.6 Flash Normalizing...
+                  In-House AI Normalizing...
                 </>
               ) : (
                 <>
                   <Sparkles className="w-4 h-4" />
-                  Run Gemini Entity Normalization
+                  Run In-House Entity Normalization
                 </>
               )}
             </button>

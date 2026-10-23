@@ -124,7 +124,7 @@ export const RoleLoginModal: React.FC<RoleLoginModalProps> = ({
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-teal-500"></span>
-                    <span>AI Differential Diagnosis (Gemini)</span>
+                    <span>AI Differential Diagnosis (nanba-clinical)</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-teal-500"></span>

@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { QdrantService } from '../database/qdrant.service';
 import { Neo4jService } from '../database/neo4j.service';
 import { PostgresService } from '../database/postgres.service';
-import { GeminiService } from '../ai/gemini.service';
+import { LlmService} from '../llm/llm.service';
 import { MEDICAL_DICTIONARIES } from './medical-dictionary.data';
 import { ExtractedClinicalEntity, MedicalCode, TerminologySystem } from '../common/interfaces/clinical.interface';
 import { IngestTextDto, IngestFhirDto } from '../common/dto/clinical.dto';
@@ -15,7 +15,7 @@ export class NormalizationService {
     private qdrantService: QdrantService,
     private neo4jService: Neo4jService,
     private postgresService: PostgresService,
-    private geminiService: GeminiService,
+    private llmService: LlmService,
   ) {}
 
   // List all available dictionary terms or filter by standard
@@ -35,7 +35,7 @@ export class NormalizationService {
     this.logger.log(`AI Search Terminology query: "${query}" (system: ${system || 'ALL'})`);
 
     // 1. Try Gemini Live AI Search
-    const aiResults = await this.geminiService.aiSearchTerminology(query, system);
+    const aiResults = await this.llmService.aiSearchTerminology(query, system);
     if (aiResults && aiResults.length > 0) {
       return aiResults;
     }
@@ -228,7 +228,7 @@ export class NormalizationService {
     const entities: ExtractedClinicalEntity[] = [];
 
     // 1. Primary Extraction: Live Gemini AI Engine
-    const aiExtracted = await this.geminiService.extractAndNormalizeWithAi(text);
+    const aiExtracted = await this.llmService.extractAndNormalizeWithAi(text);
     if (aiExtracted && aiExtracted.length > 0) {
       for (const item of aiExtracted) {
         entities.push({

@@ -77,15 +77,15 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
   getDefaultPatient5(): UserAccount {
     return {
       id: 'USR-PAT-1005',
-      email: 'ramesh.patel@example.com',
+      email: 'manikandan@example.com',
       passwordHash: this.hashPassword('patient123'),
       role: 'patient',
-      fullName: 'Ramesh Patel',
-      phone: '+91 98405 67890',
+      fullName: 'manikandan',
+      phone: '+91 98405 11223',
       patientId: 'P-1005',
       isIntakeCompleted: true,
-      createdAt: '2024-03-10T10:00:00Z',
-      updatedAt: '2026-09-17T11:00:00Z',
+      createdAt: '2026-09-16T12:53:17.800Z',
+      updatedAt: '2026-09-22T05:15:29.618Z',
     };
   }
 
@@ -345,23 +345,23 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
     const p5: PatientProfile = {
       id: 'P-1005',
       enNanbaId: 'EN-IND-2026-09815',
-      fullName: 'Ramesh Patel',
-      age: 52,
+      fullName: 'manikandan',
+      age: 58,
       gender: 'M',
-      dob: '1974-05-18',
-      phone: '+91 98405 67890',
-      bloodType: 'O+',
-      chronicConditions: ['Type 2 diabetes mellitus'],
-      allergies: ['Penicillin (Severe anaphylactic shock risk)'],
+      dob: '1968-06-15',
+      phone: '+91 98405 11223',
+      bloodType: 'B+',
+      chronicConditions: [],
+      allergies: [],
       vitals: {
-        bloodPressure: '130/85 mmHg',
-        heartRate: 88,
-        bloodGlucose: '180 mg/dL',
-        oxygenSaturation: 97,
-        bmi: 26.2,
+        bloodPressure: '120/80 mmHg',
+        heartRate: 72,
+        bloodGlucose: '95 mg/dL',
+        oxygenSaturation: 99,
+        bmi: 22.5,
       },
-      createdAt: '2024-03-10T10:00:00Z',
-      updatedAt: '2026-09-17T11:00:00Z',
+      createdAt: '2026-09-16T12:53:17.800Z',
+      updatedAt: '2026-09-22T05:15:29.618Z',
     };
 
     this.inMemoryPatients.set(p1.id, p1);
@@ -400,26 +400,6 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
         confidenceScore: 1.0,
         recordedAt: '2024-06-15T09:10:00Z',
         clinicalSignificance: 'Absolute contraindication for Amoxicillin, Ampicillin, and related beta-lactams.',
-      },
-      {
-        id: 'EV-04',
-        patientId: 'P-1005',
-        claim: 'Diagnosed with Type 2 Diabetes Mellitus [ICD-11: 5A11]',
-        sourceDocument: 'Endocrinology Consultation Note',
-        statusTag: 'verified',
-        confidenceScore: 1.0,
-        recordedAt: '2024-03-10T10:30:00Z',
-        clinicalSignificance: 'Active Metformin 500mg daily prescription.',
-      },
-      {
-        id: 'EV-05',
-        patientId: 'P-1005',
-        claim: 'Documented life-threatening Penicillin allergy [RxNorm: 70618] with past anaphylaxis',
-        sourceDocument: 'Allergy Testing Clinic Record',
-        statusTag: 'verified',
-        confidenceScore: 1.0,
-        recordedAt: '2024-03-10T11:00:00Z',
-        clinicalSignificance: 'Fatal contraindication for beta-lactam antibiotics (Amoxicillin, Ampicillin).',
       },
       {
         id: 'EV-06',
@@ -638,7 +618,7 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
       this.inMemoryUsers.set(p.id, p);
       return p;
     }
-    if (lowerId === 'ramesh.patel@example.com' || cleanId === '+91 98405 67890' || cleanId === 'P-1005') {
+    if (lowerId === 'manikandan@example.com' || cleanId === '+91 98405 11223' || lowerId === 'ramesh.patel@example.com' || cleanId === 'P-1005') {
       const p = this.getDefaultPatient5();
       this.inMemoryUsers.set(p.id, p);
       return p;
@@ -760,6 +740,9 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
             chronicConditions: r.chronic_conditions || [],
             pastDiseases: r.past_diseases || [],
             allergies: r.allergies || [],
+            currentMedications: r.medications || [],
+            labObservations: r.labs || [],
+            imagingRecords: r.imaging || [],
             vitals: r.vitals || {},
             createdAt: r.created_at?.toISOString?.() || r.created_at,
             updatedAt: r.updated_at?.toISOString?.() || r.updated_at,
@@ -790,6 +773,9 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
             chronicConditions: r.chronic_conditions || [],
             pastDiseases: r.past_diseases || [],
             allergies: r.allergies || [],
+            currentMedications: r.medications || [],
+            labObservations: r.labs || [],
+            imagingRecords: r.imaging || [],
             vitals: r.vitals || {},
             createdAt: r.created_at?.toISOString?.() || r.created_at,
             updatedAt: r.updated_at?.toISOString?.() || r.updated_at,

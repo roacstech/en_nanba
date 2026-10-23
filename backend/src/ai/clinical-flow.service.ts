@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { GeminiService } from './gemini.service';
+import { LlmService } from '../llm/llm.service';
 import { ExternalTerminologiesService } from '../normalization/external-terminologies.service';
 import { PostgresService } from '../database/postgres.service';
 import { Neo4jService } from '../database/neo4j.service';
@@ -17,7 +17,7 @@ export class ClinicalFlowService {
   private readonly logger = new Logger(ClinicalFlowService.name);
 
   constructor(
-    private geminiService: GeminiService,
+    private llmService: LlmService,
     private externalTerminologies: ExternalTerminologiesService,
     private postgresService: PostgresService,
     private neo4jService: Neo4jService,
@@ -35,17 +35,20 @@ export class ClinicalFlowService {
    * 7. Doctor Decides Next (Human Clinical Signature)
    */
   async executeFlow(payload: ClinicalFlowExecutePayload): Promise<ClinicalFlowExecutionResult> {
+    const patientId = payload.patientId || this.extractPatientId(payload.rawText || '') || 'P-1005';
+    let patient = await this.postgresService.getPatientById(patientId);
+
     const rawText =
       payload.rawText?.trim() ||
-      'Patient Ramesh Patel (P-1005): Fever 102°F, Type 2 Diabetes, takes Metformin 500mg, allergic to Penicillin, HbA1c 8.2%';
+      (patient
+        ? `Patient ${patient.fullName} (${patient.id}): Vitals BP ${patient.vitals?.bloodPressure || '120/80 mmHg'}, HR ${patient.vitals?.heartRate || 72} bpm, Blood Glucose ${patient.vitals?.bloodGlucose || '95 mg/dL'}. Chronic conditions: ${patient.chronicConditions?.join(', ') || 'None'}. Current medications: ${patient.currentMedications?.join(', ') || 'None'}. Allergies: ${patient.allergies?.filter(a => a && !a.toLowerCase().startsWith('null') && !a.toLowerCase().startsWith('none')).join(', ') || 'None'}.`
+        : 'Patient presents for routine clinical examination.');
 
-    const patientId = payload.patientId || this.extractPatientId(rawText) || 'P-1005';
-    let patient = await this.postgresService.getPatientById(patientId);
     const patientName =
       payload.patientName ||
       patient?.fullName ||
       this.extractPatientName(rawText) ||
-      (patientId === 'P-1006' ? 'Pooja Nair' : patientId === 'P-1005' ? 'Ramesh Patel' : 'Patient');
+      'Patient';
     const enteredBy = payload.doctorName || 'Dr. Aravind Swamy, MD';
 
     this.logger.log(`Executing 7-step Clinical AI Flow for ${patientName} (${patientId})...`);
@@ -159,18 +162,10 @@ export class ClinicalFlowService {
       clinicalSignificance: 'Critical contraindication for beta-lactam antibiotics (Penicillin, Amoxicillin)',
     });
 
-    // Update patient profile if exists, or create
+    // Note: AI diagnostic analysis must NOT mutate or overwrite patient permanent baseline records (e.g. chronicConditions or vitals)
+    // Patient baseline records can only be updated via explicit clinician intake or doctor approval.
     patient = (await this.postgresService.getPatientById(patientId)) || patient;
-    if (patient) {
-      await this.postgresService.updatePatient(patientId, {
-        chronicConditions: Array.from(new Set([...patient.chronicConditions, step2.disease])),
-        allergies: Array.from(new Set([...patient.allergies, `${step2.allergy} (Severe Anaphylaxis Risk)`])),
-        vitals: {
-          ...patient.vitals,
-          bloodGlucose: '180 mg/dL',
-        },
-      });
-    } else {
+    if (!patient) {
       const newPatient: PatientProfile = {
         id: patientId,
         enNanbaId: `EN-IND-2026-${Math.floor(10000 + Math.random() * 90000)}`,
@@ -244,7 +239,7 @@ export class ClinicalFlowService {
         conflictSummary: `🚨 CONTRADICTION RADAR CHECK: Blocks Aspirin & Ibuprofen (Fatal Asthma Attack / AERD Hazard!)`,
         clinicalHazard: `Patient ${patientName} has documented hypersensitivity to Aspirin/Ibuprofen with underlying Bronchial Asthma (ICD-11: CA23). Administering NSAIDs causes COX-1 inhibition and shunts arachidonic acid to the 5-lipoxygenase pathway, inducing massive cysteinyl leukotriene release, severe acute bronchospasm, status asthmaticus, and respiratory failure (Aspirin-Exacerbated Respiratory Disease / Samter's Triad).`,
         geminiRecommendation: {
-          safeAlternative: `💡 GEMINI AI RECOMMENDATION: Safe Alternative: Paracetamol 650mg SOS + Montelukast 10mg OD`,
+          safeAlternative: `💡 IN-HOUSE AI RECOMMENDATION (nanba-clinical): Safe Alternative: Paracetamol 650mg SOS + Montelukast 10mg OD`,
           clinicalRationale: `Paracetamol / Acetaminophen at standard therapeutic doses (≤650mg) does not meaningfully inhibit peripheral COX-1, making it the proven safe antipyretic for AERD patients. Montelukast is a selective leukotriene receptor antagonist that protects bronchial reactivity and treats underlying airway inflammation.`,
           suggestedPrescription: [
             {
@@ -273,7 +268,7 @@ export class ClinicalFlowService {
         conflictSummary: `🚨 CONTRADICTION RADAR CHECK: Blocks Penicillin/Amoxicillin (Fatal Allergic Shock!)`,
         clinicalHazard: `Patient ${patientName} has a documented life-threatening allergy to Penicillin. Administering Amoxicillin or beta-lactam antibiotics carries an extreme risk of acute IgE-mediated anaphylaxis, bronchospasm, and fatal circulatory collapse.`,
         geminiRecommendation: {
-          safeAlternative: `💡 GEMINI AI RECOMMENDATION: Safe Alternative: Azithromycin 500mg + Paracetamol 650mg`,
+          safeAlternative: `💡 IN-HOUSE AI RECOMMENDATION (nanba-clinical): Safe Alternative: Azithromycin 500mg + Paracetamol 650mg`,
           clinicalRationale: `Azithromycin is a Macrolide class antibiotic completely devoid of beta-lactam rings, providing safe and effective broad-spectrum coverage for respiratory/febrile infections without allergic cross-reactivity. Paracetamol 650mg provides rapid antipyretic relief without gastric or renal toxicity.`,
           suggestedPrescription: [
             {
@@ -297,7 +292,7 @@ export class ClinicalFlowService {
         conflictSummary: `✅ CONTRADICTION RADAR CHECK: No Immediate Contraindications Detected`,
         clinicalHazard: `No documented high-risk drug-disease or drug-allergy interactions detected for ${patientName}.`,
         geminiRecommendation: {
-          safeAlternative: `💡 GEMINI AI RECOMMENDATION: Standard Symptomatic Therapy`,
+          safeAlternative: `💡 IN-HOUSE AI RECOMMENDATION (nanba-clinical): Standard Symptomatic Therapy`,
           clinicalRationale: `Continue prescribed regimen with clinical monitoring.`,
           suggestedPrescription: [
             {
@@ -314,9 +309,28 @@ export class ClinicalFlowService {
     // STEP 6: SHOW TO DOCTOR (DOCTOR INTELLIGENCE WORKSPACE)
     // Presents past history + today's visit + contradiction warning + AI differential
     // =========================================================================
+    const hasValidDisease = step2.disease && !step2.disease.toLowerCase().includes('none') && step2.disease !== 'Unknown';
+    const hasValidAllergy = step2.allergy && !step2.allergy.toLowerCase().includes('none') && !step2.allergy.toLowerCase().includes('null');
+    const hasValidMed = step2.medication && !step2.medication.toLowerCase().includes('none');
+
+    const historyParts: string[] = [];
+    if (hasValidDisease) {
+      historyParts.push(`documented ${step2.disease} [ICD-11: ${step3.icd11?.officialCode || 'Standard'}]`);
+    } else {
+      historyParts.push('no documented chronic diseases');
+    }
+    if (hasValidMed) {
+      historyParts.push(`actively maintained on ${step2.medication} [RxNorm: ${step3.rxNormMedication?.officialCode || 'Standard'}]`);
+    }
+    if (hasValidAllergy) {
+      historyParts.push(`documented hypersensitivity to ${step2.allergy} [RxNorm: ${step3.rxNormAllergy?.officialCode || 'Standard'}]`);
+    } else {
+      historyParts.push('no known drug allergies (NKDA)');
+    }
+
     const step6 = {
-      pastHistorySummary: `Past History: ${patientName} has documented ${step2.disease} [ICD-11: ${step3.icd11.officialCode}], actively maintained on ${step2.medication} [RxNorm: ${step3.rxNormMedication.officialCode}]. Documented hypersensitivity to ${step2.allergy} [RxNorm: ${step3.rxNormAllergy.officialCode}].`,
-      presentEncounterSummary: `Today's Visit: Acute presentation of ${step2.symptom}. Objective finding: ${step2.labTest} [LOINC: ${step3.loincLabTest.officialCode}].`,
+      pastHistorySummary: `Past History: ${patientName} has ${historyParts.join(', ')}.`,
+      presentEncounterSummary: `Today's Visit: Acute presentation of ${step2.symptom || 'symptoms'}. Objective finding: ${step2.labTest && !step2.labTest.toLowerCase().includes('none') ? step2.labTest + ' [LOINC: ' + (step3.loincLabTest?.officialCode || 'Standard') + ']' : 'Routine clinical observations within baseline'}.`,
       differentialDiagnoses: isAsthmatic
         ? [
             {
@@ -330,7 +344,8 @@ export class ClinicalFlowService {
               probability: 'HIGH (91%)',
             },
           ]
-        : [
+        : hasValidDisease
+        ? [
             {
               condition: 'Acute upper respiratory infection / Febrile syndrome',
               code: 'CA00 / MG26',
@@ -338,8 +353,20 @@ export class ClinicalFlowService {
             },
             {
               condition: `${step2.disease} with secondary infection risk`,
-              code: step3.icd11.officialCode,
+              code: step3.icd11?.officialCode || '5A11',
               probability: 'HIGH (92%)',
+            },
+          ]
+        : [
+            {
+              condition: 'Acute upper respiratory infection / Febrile syndrome',
+              code: 'CA00 / MG26',
+              probability: 'HIGH (88%)',
+            },
+            {
+              condition: 'Symptomatic Evaluation (Baseline Medical History Clear)',
+              code: 'QA00',
+              probability: 'MODERATE (76%)',
             },
           ],
       safetyRiskAlert: `ACTIVE HAZARD: ${step5.blockedDrugs.length > 0 ? step5.blockedDrugs.slice(0, 2).join(' & ') + ' blocked by Contradiction Radar.' : 'Monitored.'} Safe alternative ${step5.geminiRecommendation.safeAlternative.replace(/^.*?Safe Alternative:\s*/i, '')} recommended.`,
@@ -387,15 +414,15 @@ export class ClinicalFlowService {
       patientId,
       decision,
       doctorName,
-      reasoningNotes: notes || `Doctor accepted Gemini AI safety recommendation and approved Azithromycin 500mg + Paracetamol 650mg.`,
-      modifiedPrescription: decision === 'ACCEPT' ? 'Azithromycin 500mg OD x 3d + Paracetamol 650mg QID PRN' : undefined,
+      reasoningNotes: notes || `Doctor accepted in-house AI clinical safety recommendation.`,
+      modifiedPrescription: decision === 'ACCEPT' ? (notes ? notes : undefined) : undefined,
       timestamp,
     });
 
     await this.postgresService.addEvidence({
       id: entryId,
       patientId,
-      claim: `Doctor Human Clinical Decision: [${decision}] by ${doctorName}. ${notes || 'Approved safe alternative antibiotic regimen.'}`,
+      claim: `Doctor Human Clinical Decision: [${decision}] by ${doctorName}. ${notes || 'Approved clinical regimen.'}`,
       sourceDocument: 'Doctor Intelligence Workspace',
       statusTag: 'verified',
       confidenceScore: 1.0,
@@ -439,9 +466,9 @@ Return ONLY a JSON object with these 5 keys:
 }
 Do NOT include markdown formatting or extra text.`;
 
-    if (this.geminiService.isLiveApiConfigured()) {
+    if (this.llmService.isLiveApiConfigured()) {
       try {
-        const response = await this.geminiService.generateClinicalReasoning(text, systemPrompt);
+        const response = await this.llmService.generateClinicalReasoning(text, systemPrompt);
         const cleaned = response.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
         const parsed = JSON.parse(cleaned);
         if (parsed && (parsed.disease || parsed.medication || parsed.allergy)) {
@@ -462,11 +489,11 @@ Do NOT include markdown formatting or extra text.`;
     const symptomMatch = text.match(/(?:Fever\s*[\d.]*°?[FC]?(?:\s*with\s*[^,]+)?|Severe\s*joint\s*pain|Chest\s*pain|Cough|Shortness\s*of\s*breath)/i);
 
     return {
-      disease: diseaseMatch ? diseaseMatch[0].trim() : isPooja ? 'Bronchial Asthma' : 'Type 2 Diabetes',
-      medication: medMatch ? medMatch[0].trim() : isPooja ? 'Salbutamol 100mcg inhaler' : 'Metformin 500mg',
-      allergy: allergyMatch ? (allergyMatch[1] || allergyMatch[2] || allergyMatch[3] || (isPooja ? 'Aspirin and Ibuprofen' : 'Penicillin')).trim() : isPooja ? 'Aspirin and Ibuprofen' : 'Penicillin',
-      labTest: labMatch ? labMatch[0].trim() : isPooja ? 'Peak Flow 380 L/min' : 'HbA1c 8.2%',
-      symptom: symptomMatch ? symptomMatch[0].trim() : isPooja ? 'Fever 101°F' : 'Fever 102°F',
+      disease: diseaseMatch ? diseaseMatch[0].trim() : isPooja ? 'Bronchial Asthma' : 'None',
+      medication: medMatch ? medMatch[0].trim() : isPooja ? 'Salbutamol 100mcg inhaler' : 'None',
+      allergy: allergyMatch ? (allergyMatch[1] || allergyMatch[2] || allergyMatch[3] || (isPooja ? 'Aspirin and Ibuprofen' : 'None')).trim() : isPooja ? 'Aspirin and Ibuprofen' : 'None',
+      labTest: labMatch ? labMatch[0].trim() : isPooja ? 'Peak Flow 380 L/min' : 'None',
+      symptom: symptomMatch ? symptomMatch[0].trim() : isPooja ? 'Fever 101°F' : 'None',
     };
   }
 

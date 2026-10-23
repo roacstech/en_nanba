@@ -107,7 +107,7 @@ export const AuthPortal: React.FC<AuthPortalProps> = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen flex bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 transition-colors">
+    <div className="min-h-screen flex bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 transition-colors" suppressHydrationWarning>
       {/* Left Column (Brand/Illustration) */}
       <div className="hidden md:flex w-1/2 bg-[#0a182d] relative overflow-hidden">
         {/* Logo Overlay */}
@@ -243,6 +243,17 @@ export const AuthPortal: React.FC<AuthPortalProps> = ({ onLoginSuccess }) => {
               >
                 {isLoading ? 'Authenticating...' : 'Login'}
               </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setDoctorEmail('sada@ennanba.ai');
+                  setDoctorPassword('sada123');
+                }}
+                className="w-full py-2 mt-2 text-xs text-slate-500 hover:text-primary-600 dark:hover:text-primary-400 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 rounded border border-dashed border-slate-200 dark:border-slate-700 transition-colors"
+              >
+                Fill Doctor Credentials (sada@ennanba.ai)
+              </button>
             </form>
           )}
 
@@ -339,6 +350,17 @@ export const AuthPortal: React.FC<AuthPortalProps> = ({ onLoginSuccess }) => {
                     className="w-full py-3 mt-4 rounded-md bg-primary-600 hover:bg-primary-700 text-white font-medium text-sm transition-colors cursor-pointer disabled:opacity-50"
                   >
                     {isLoading ? 'Authenticating...' : 'Login'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPatientIdentifier('manikandan@example.com');
+                      setPatientPassword('patient123');
+                    }}
+                    className="w-full py-2 mt-2 text-xs text-slate-500 hover:text-primary-600 dark:hover:text-primary-400 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 rounded border border-dashed border-slate-200 dark:border-slate-700 transition-colors"
+                  >
+                    Fill Patient Credentials (manikandan@example.com)
                   </button>
                 </form>
               )}

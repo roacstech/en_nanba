@@ -43,7 +43,7 @@ interface Props {
 
 function getDefaultClinicalNoteForPatient(patient?: PatientProfile | null, patientId?: string): string {
   const pid = patient?.id || patientId || 'P-1005';
-  const name = patient?.fullName || (pid === 'P-1006' ? 'Pooja Nair' : pid === 'P-1003' ? 'Rajesh Kumar' : 'Ramesh Patel');
+  const name = patient?.fullName || (pid === 'P-1006' ? 'Pooja Nair' : pid === 'P-1003' ? 'Rajesh Kumar' : 'manikandan');
 
   if (pid === 'P-1006' || name.toLowerCase().includes('pooja')) {
     return `Patient Pooja Nair (P-1006): Fever 101°F with acute throat irritation, Bronchial Asthma, takes Salbutamol 100mcg inhaler, allergic to Aspirin and Ibuprofen, Peak Flow 380 L/min`;
@@ -57,13 +57,15 @@ function getDefaultClinicalNoteForPatient(patient?: PatientProfile | null, patie
     return `Patient Ramesh (P-1004): Type 2 Diabetes, takes Metformin 500mg, allergic to Penicillin, HbA1c 8.0%, presenting with fever 101.8°F`;
   }
 
-  if (patient && patient.chronicConditions && patient.chronicConditions.length > 0) {
-    const conditions = patient.chronicConditions.join(', ');
-    const allergies = patient.allergies && patient.allergies.length > 0 ? patient.allergies.join(' and ') : 'Penicillin';
-    return `Patient ${name} (${pid}): Fever 101.5°F, ${conditions}, takes maintenance therapy, allergic to ${allergies}, vitals monitored`;
+  if (patient) {
+    const conditions = patient.chronicConditions && patient.chronicConditions.length > 0 ? patient.chronicConditions.join(', ') : 'None documented';
+    const allergies = patient.allergies && patient.allergies.length > 0 ? patient.allergies.filter((a: string) => a && !a.toLowerCase().startsWith('null') && !a.toLowerCase().startsWith('none')).join(' and ') : 'No known drug allergies';
+    const bp = patient.vitals?.bloodPressure || '120/80 mmHg';
+    const glucose = patient.vitals?.bloodGlucose || '95 mg/dL';
+    return `Patient ${name} (${pid}): Vitals BP ${bp}, Glucose ${glucose}. Chronic conditions: ${conditions}. Current medications: ${patient.currentMedications?.join(', ') || 'None'}. Allergies: ${allergies}.`;
   }
 
-  return `Patient Ramesh Patel (P-1005): Fever 102°F, Type 2 Diabetes, takes Metformin 500mg, allergic to Penicillin, HbA1c 8.2%`;
+  return `Patient (${pid}): Outpatient clinical encounter. Baseline vitals and history under evaluation.`;
 }
 
 export default function LiveClinicalFlowVisualizer({
@@ -73,7 +75,7 @@ export default function LiveClinicalFlowVisualizer({
   doctorName = 'Dr. Aravind Swamy, MD',
 }: Props) {
   const activePid = patient?.id || patientId;
-  const activeName = patient?.fullName || (activePid === 'P-1006' ? 'Pooja Nair' : activePid === 'P-1003' ? 'Rajesh Kumar' : 'Ramesh Patel');
+  const activeName = patient?.fullName || (activePid === 'P-1006' ? 'Pooja Nair' : activePid === 'P-1003' ? 'Rajesh Kumar' : 'manikandan');
 
   const [rawInput, setRawInput] = useState(() => getDefaultClinicalNoteForPatient(patient, activePid));
   const [selectedPatientId, setSelectedPatientId] = useState(activePid);
@@ -91,7 +93,7 @@ export default function LiveClinicalFlowVisualizer({
   } | null>(null);
 
   const [decisionNotes, setDecisionNotes] = useState(
-    'Verified clinical allergy and contraindication profile against medical ledger. Blocked high-risk medication. Prescribing safe Gemini AI recommended regimen.'
+    'Verified clinical allergy and contraindication profile against medical ledger. Blocked high-risk medication. Prescribing safe In-House AI (nanba-clinical) recommended regimen.'
   );
 
   // UI expand states
@@ -195,7 +197,7 @@ export default function LiveClinicalFlowVisualizer({
             <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center flex-wrap gap-2">
               <span>Patient Data</span>
               <ArrowRight className="inline w-5 h-5 text-indigo-400" />
-              <span>Gemini NLP</span>
+              <span>In-House NLP (nanba-clinical)</span>
               <ArrowRight className="inline w-5 h-5 text-cyan-400" />
               <span>Live Terminology</span>
               <ArrowRight className="inline w-5 h-5 text-emerald-400" />
@@ -316,14 +318,14 @@ export default function LiveClinicalFlowVisualizer({
             type="button"
             onClick={() => {
               setSelectedPatientId('P-1005');
-              const note = 'Patient Ramesh Patel (P-1005): Fever 102°F, Type 2 Diabetes, takes Metformin 500mg, allergic to Penicillin, HbA1c 8.2%';
+              const note = 'Patient manikandan (P-1005): Persistent cough, Chest X-Ray evaluation, takes Metformin 500mg and Sildenafil 50mg, BP 120/80 mmHg, Blood Glucose 95 mg/dL';
               setRawInput(note);
               handleRunFlow(note, 'P-1005');
             }}
             className="text-xs px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-semibold transition-colors cursor-pointer flex items-center gap-1.5"
           >
             <Sparkles className="w-3 h-3 text-blue-500" />
-            Ramesh Patel (P-1005) • Fever + Penicillin Allergy
+            manikandan (P-1005) • Persistent Cough + Baseline Evaluation
           </button>
           <button
             type="button"
@@ -402,7 +404,7 @@ export default function LiveClinicalFlowVisualizer({
                   <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     AI Checks Raw Text (Clinical NLP)
                     <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/20 font-normal">
-                      Gemini Parses into 5 Buckets
+                      In-House AI Parses into 5 Buckets
                     </span>
                   </h2>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -412,7 +414,7 @@ export default function LiveClinicalFlowVisualizer({
               </div>
               <div className="flex items-center gap-2 text-xs bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 text-indigo-700 dark:text-indigo-300 px-3 py-1 rounded-full font-medium">
                 <Cpu className="w-3.5 h-3.5" />
-                Gemini High Precision NER
+                nanba-clinical Clinical NER
               </div>
             </div>
 
@@ -928,7 +930,7 @@ export default function LiveClinicalFlowVisualizer({
 
               <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800">
                 <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-                  Gemini Differential Diagnoses
+                  In-House AI Differential Diagnoses
                 </div>
                 <div className="space-y-2">
                   {flowResult.step6DoctorWorkspace.differentialDiagnoses.map((diff: any, i: number) => (

@@ -23,7 +23,7 @@ import {
 
 export default function DoctorWorkspacePage() {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
-  const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
+  const [mounted, setMounted] = useState<boolean>(false);
 
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
   const [patients, setPatients] = useState<PatientProfile[]>([]);
@@ -51,6 +51,7 @@ export default function DoctorWorkspacePage() {
 
   // Check saved authentication session
   useEffect(() => {
+    setMounted(true);
     try {
       const savedUser = localStorage.getItem('ennanba_user');
       if (savedUser) {
@@ -59,8 +60,6 @@ export default function DoctorWorkspacePage() {
       }
     } catch (e) {
       console.warn('Failed restoring user session from localStorage', e);
-    } finally {
-      setIsAuthChecking(false);
     }
   }, []);
 
@@ -183,12 +182,14 @@ export default function DoctorWorkspacePage() {
     });
   };
 
-  if (isAuthChecking) {
+  // Gate rendering until mounted on client to prevent browser password autofill extensions
+  // (e.g. Dashlane/1Password injecting 'fdprocessedid') from triggering React hydration errors
+  if (!mounted) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400">
-        <div className="flex items-center gap-3">
-          <div className="w-5 h-5 border-2 border-teal-400 border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm font-semibold">Initializing EN NANBA Platform...</span>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-[#00cba9] border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Loading EN NANBA Workspace...</p>
         </div>
       </div>
     );

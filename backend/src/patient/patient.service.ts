@@ -8,7 +8,7 @@ import {
 import { PostgresService } from '../database/postgres.service';
 import { Neo4jService } from '../database/neo4j.service';
 import { QdrantService } from '../database/qdrant.service';
-import { GeminiService } from '../ai/gemini.service';
+import { LlmService } from '../llm/llm.service';
 import { RadarService } from '../graph/radar.service';
 import {
   PatientProfile,
@@ -35,7 +35,7 @@ export class PatientService {
     private postgresService: PostgresService,
     private neo4jService: Neo4jService,
     private qdrantService: QdrantService,
-    private geminiService: GeminiService,
+    private llmService: LlmService,
     private radarService: RadarService,
   ) {}
 
@@ -510,8 +510,8 @@ export class PatientService {
     else if (bmi >= 25) bmiCategory = 'Overweight';
     else if (bmi < 18.5) bmiCategory = 'Underweight';
 
-    // Graph Meds & Investigations
-    const medications = graphData.nodes
+    // Graph Meds & Investigations (augmented by patient database fields)
+    let medications = graphData.nodes
       .filter(n => n.label === 'Medication')
       .map(n => ({
         name: n.properties.name || 'Medication',
@@ -519,7 +519,15 @@ export class PatientService {
         dosage: n.properties.dosage || 'Standard clinical dose',
       }));
 
-    const investigations = graphData.nodes
+    if (medications.length === 0 && patient.currentMedications && patient.currentMedications.length > 0) {
+      medications = patient.currentMedications.map(m => ({
+        name: typeof m === 'string' ? m : (m as any).name || 'Medication',
+        rxNormCode: (m as any).rxNormCode || 'RxNorm Mapped',
+        dosage: (m as any).dosage || 'Documented Active Regimen',
+      }));
+    }
+
+    let investigations = graphData.nodes
       .filter(n => n.label === 'Investigation')
       .map(n => ({
         name: n.properties.name || 'Lab Test',
@@ -527,6 +535,15 @@ export class PatientService {
         result: n.properties.result || 'Pending',
         status: n.properties.status || 'Active',
       }));
+
+    if (investigations.length === 0 && patient.labObservations && patient.labObservations.length > 0) {
+      investigations = patient.labObservations.map(lab => ({
+        name: lab.test || lab.name || 'Lab Observation',
+        loincCode: lab.loincCode || 'LOINC Mapped',
+        result: lab.value || lab.result || 'Documented',
+        status: 'Completed',
+      }));
+    }
 
     return {
       patient,
@@ -571,10 +588,10 @@ export class PatientService {
     const postgres = this.postgresService.getConnectivityStatus();
     const neo4j = this.neo4jService.getConnectivityStatus();
     const qdrant = this.qdrantService.getConnectivityStatus();
-    const gemini = {
-      isLiveConfigured: this.geminiService.isLiveApiConfigured(),
-      model: 'gemini-3.8-flash',
-      mode: this.geminiService.isLiveApiConfigured() ? 'GEMINI_API_LIVE' : 'CLINICAL_AI_FALLBACK',
+    const inHouseLlm = {
+      isLiveConfigured: this.llmService.isLiveApiConfigured(),
+      model: 'nanba-clinical (Meta Llama 3.2 3B)',
+      mode: 'IN_HOUSE_OLLAMA_LIVE',
     };
 
     return {
@@ -587,7 +604,7 @@ export class PatientService {
         neo4j,
         qdrant,
       },
-      aiEngine: gemini,
+      aiEngine: inHouseLlm,
       timestamp: new Date().toISOString(),
     };
   }

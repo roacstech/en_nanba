@@ -33,6 +33,9 @@ export interface PatientProfile {
   chronicConditions: string[];
   pastDiseases?: (PastDisease | string)[];
   allergies: string[];
+  currentMedications?: string[];
+  labObservations?: any[];
+  imagingRecords?: any[];
   vitals: {
     bloodPressure: string;
     heartRate: number;

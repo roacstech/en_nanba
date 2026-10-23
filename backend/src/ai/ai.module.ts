@@ -1,5 +1,5 @@
 import { Module, forwardRef } from '@nestjs/common';
-import { GeminiService } from './gemini.service';
+import { LlmModule } from '../llm/llm.module';
 import { PhiMaskerService } from './phi-masker.service';
 import { LangChainOrchestratorService } from './langchain-orchestrator.service';
 import { ClinicalFlowService } from './clinical-flow.service';
@@ -9,16 +9,15 @@ import { GraphModule } from '../graph/graph.module';
 import { NormalizationModule } from '../normalization/normalization.module';
 
 @Module({
-  imports: [GraphModule, forwardRef(() => NormalizationModule)],
+  imports: [GraphModule,LlmModule, forwardRef(() => NormalizationModule)],
   controllers: [AiController, ClinicalFlowController],
   providers: [
-    GeminiService,
     PhiMaskerService,
     LangChainOrchestratorService,
     ClinicalFlowService,
   ],
   exports: [
-    GeminiService,
+    LlmModule,
     PhiMaskerService,
     LangChainOrchestratorService,
     ClinicalFlowService,

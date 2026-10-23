@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PhiMaskerService } from './phi-masker.service';
-import { GeminiService } from './gemini.service';
+import { LlmService } from '../llm/llm.service';
 import { QdrantService } from '../database/qdrant.service';
 import { Neo4jService } from '../database/neo4j.service';
 import { PostgresService } from '../database/postgres.service';
@@ -13,7 +13,7 @@ export class LangChainOrchestratorService {
 
   constructor(
     private phiMasker: PhiMaskerService,
-    private geminiService: GeminiService,
+     private llmService: LlmService,
     private qdrantService: QdrantService,
     private neo4jService: Neo4jService,
     private postgresService: PostgresService,
@@ -35,9 +35,29 @@ export class LangChainOrchestratorService {
     const graphData = await this.neo4jService.getPatientGraph(patientId);
     const radarAlerts = await this.radarService.evaluatePatientRadar(patientId);
 
+    // Format past medical history and remissions (e.g. Cancer, Blood Cancer)
+    const pastHistory = (patient?.pastDiseases && patient.pastDiseases.length > 0)
+      ? patient.pastDiseases.map((p: any) => {
+          if (typeof p === 'string') return p;
+          return `${p.condition} (${p.year}: ${p.status || 'Past history'}${p.notes ? ` - ${p.notes}` : ''})`;
+        }).join('; ')
+      : 'None documented';
+        // Clean and sanitize allergies (filters out dirty entries like null, None, or blanks)
+    const cleanedAllergies = (patient?.allergies || [])
+      .map((a: string) => a?.trim())
+      .filter((a: string) => {
+        if (!a) return false;
+        const lower = a.toLowerCase();
+        return !lower.startsWith('null') && !lower.startsWith('none') && lower !== '[]';
+      });
+    const allergiesStr = cleanedAllergies.length > 0 ? cleanedAllergies.join(', ') : 'None documented';
+
     // 2. PHI / PII Masking: De-identify all patient identifiers
-    const rawNote = additionalClinicalNote || `Patient presenting for clinical evaluation. Active chronic conditions: ${patient?.chronicConditions.join(', ') || 'N/A'}. Known allergies: ${patient?.allergies.join(', ') || 'None'}. Vitals: BP ${patient?.vitals.bloodPressure}, HR ${patient?.vitals.heartRate} bpm.`;
+    const rawNote = additionalClinicalNote || 
+      `Patient presenting for clinical evaluation. Active chronic conditions: ${patient?.chronicConditions?.join(', ') || 'None'}. Past Medical History / Remissions: ${pastHistory}. Known allergies: ${allergiesStr}. Vitals: BP ${patient?.vitals?.bloodPressure || 'N/A'}, HR ${patient?.vitals?.heartRate || 'N/A'} bpm.`;
+
     const maskResult = this.phiMasker.maskPatientData(rawNote, patient);
+
 
     // 3. RAG Retrieval via Qdrant: Retrieve clinical guidelines and drug contraindication facts
     const queryTerms = [
@@ -50,6 +70,14 @@ export class LangChainOrchestratorService {
     // 4. Construct LangChain Prompt Context
     const systemInstruction = `You are the EN NANBA Clinical Intelligence Core, an expert clinical decision support AI operating under strict medical evidence and safety guidelines.
 Your role is to analyze de-identified clinical graph data, detect contraindications, gaps in care, and synthesize a differential diagnosis.
+
+STRICT CLINICAL EVIDENCE & VITAL FIDELITY RULES:
+1. NEVER invent, fabricate, or alter the patient's vitals. 
+   - A blood pressure of 120/80 mmHg is strictly NORMAL. Do NOT state the patient has "High Blood Pressure" or "BP > 140/90" unless their provided BP reading is actually elevated above 135/85.
+   - Do NOT diagnose Essential Hypertension unless explicitly documented under active chronic conditions or supported by elevated BP readings.
+2. LAB INTEGRITY: Do NOT invent lab values (such as eGFR) not provided in the case narrative.
+3. ALLERGY ACCURACY: Only identify verified allergens (e.g. Penicillin) as contraindications. Never invent imaginary drug names.
+
 CRITICAL INSTRUCTION: You MUST return a single, valid, strictly formatted JSON object adhering to this schema:
 {
   "patientSummary": string,
@@ -94,8 +122,9 @@ ${ragGuidelineChunks.map(g => `* [${g.system} - ${g.code}] ${g.display}: ${g.des
 Synthesize the patient case, validate the deterministic alerts, identify all critical contraindications, and provide evidence-backed recommendations.
 `;
 
-    // 5. Call LLM (Google Gemini API / Deterministic engine)
-    const rawAiOutput = await this.geminiService.generateClinicalReasoning(promptPayload, systemInstruction);
+    // 5. Call LLM Model
+    const rawAiOutput = await this.llmService.generateClinicalReasoning(promptPayload, systemInstruction);
+
 
     // 6. Strict Zod Validation Layer
     let parsedJson: any;
@@ -123,7 +152,7 @@ Synthesize the patient case, validate the deterministic alerts, identify all cri
         id: `EV-AI-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         patientId,
         claim: `[${contra.severity} HAZARD] ${contra.hazard}`,
-        sourceDocument: 'AI Orchestrator (Google Gemini 3.8 Flash + LangChain)',
+        sourceDocument: 'AI Orchestrator (In-House Meta Llama 3.2 3B nanba-clinical + LangChain)',
         statusTag: 'ai-derived',
         confidenceScore: 0.96,
         recordedAt: new Date().toISOString(),

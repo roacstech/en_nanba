@@ -203,27 +203,29 @@ export const ClientPocDashboard: React.FC<ClientPocDashboardProps> = ({
     message: string;
   } | null>(null);
 
-  // Auto-fill clinical note when patient changes
+  // Auto-fill clinical note when patient changes based on REAL database fields
   useEffect(() => {
     if (!selectedPatient) return;
 
-    if (selectedPatient.id === 'P-1005') {
-      setClinicalNote(
-        'Patient Ramesh Patel (P-1005) presents with acute high fever 102°F, productive cough, and chills for 2 days. Type 2 Diabetes on Metformin 500mg. Severe Penicillin allergy. Considering Amoxicillin 500mg for acute chest infection.'
-      );
-    } else if (selectedPatient.id === 'P-1001') {
-      setClinicalNote(
-        'Patient Rajesh Kumar (P-1001) presents with elevated BP 160/100 mmHg, chest heaviness. Chronic hypertension on Amlodipine 5mg. Mild sulfa allergy. Considering Nitroglycerin sublingual.'
-      );
-    } else if (selectedPatient.id === 'P-1002') {
-      setClinicalNote(
-        'Patient Priya Sharma (P-1002) presents with severe unilateral throbbing migraine and nausea. Documented Penicillin allergy. Considering Ampicillin for mild sinus infection.'
-      );
-    } else {
-      setClinicalNote(
-        `Patient ${selectedPatient.fullName} (${selectedPatient.id}) presents for routine follow-up with acute symptoms. Chronic conditions: ${selectedPatient.chronicConditions.join(', ') || 'None'}.`
-      );
-    }
+    const chronic = selectedPatient.chronicConditions && selectedPatient.chronicConditions.length > 0
+      ? selectedPatient.chronicConditions.join(', ')
+      : 'None';
+    const past = selectedPatient.pastDiseases && selectedPatient.pastDiseases.length > 0
+      ? selectedPatient.pastDiseases.join(', ')
+      : 'None';
+    const allergies = selectedPatient.allergies && selectedPatient.allergies.length > 0
+      ? selectedPatient.allergies.filter((a: string) => a && !a.toLowerCase().startsWith('null') && !a.toLowerCase().startsWith('none') && a.trim() !== '').join(', ')
+      : 'None documented';
+    const meds = selectedPatient.currentMedications && selectedPatient.currentMedications.length > 0
+      ? selectedPatient.currentMedications.join(', ')
+      : 'None';
+    const bp = selectedPatient.vitals?.bloodPressure || '120/80 mmHg';
+    const glucose = selectedPatient.vitals?.bloodGlucose || '95 mg/dL';
+    const hr = selectedPatient.vitals?.heartRate ? `${selectedPatient.vitals.heartRate} bpm` : '72 bpm';
+
+    setClinicalNote(
+      `Patient ${selectedPatient.fullName} (${selectedPatient.id}): Vitals BP ${bp}, HR ${hr}, Blood Glucose ${glucose}. Documented chronic conditions: ${chronic}. Past medical history: ${past}. Current medications: ${meds}. Documented allergies: ${allergies}.`
+    );
 
     setAiResult(null);
     setCommitSuccess(null);
@@ -255,15 +257,19 @@ export const ClientPocDashboard: React.FC<ClientPocDashboardProps> = ({
     setIsAnalyzing(true);
     setCommitSuccess(null);
     try {
+      const chronic = selectedPatient.chronicConditions && selectedPatient.chronicConditions.length > 0
+        ? selectedPatient.chronicConditions.join(', ')
+        : 'None';
+      const past = selectedPatient.pastDiseases && selectedPatient.pastDiseases.length > 0
+        ? selectedPatient.pastDiseases.join(', ')
+        : 'None';
+      const allergies = selectedPatient.allergies && selectedPatient.allergies.length > 0
+        ? selectedPatient.allergies.filter((a: string) => a && !a.toLowerCase().startsWith('null') && !a.toLowerCase().startsWith('none') && a.trim() !== '').join(', ')
+        : 'None documented';
+
       const textToAnalyze =
         clinicalNote.trim() ||
-        (selectedPatient.id === 'P-1005'
-          ? 'Patient Ramesh Patel (P-1005) presents with acute high fever 102°F, productive cough, and chills for 2 days. Type 2 Diabetes on Metformin 500mg. Severe Penicillin allergy. Considering Amoxicillin 500mg for acute chest infection.'
-          : selectedPatient.id === 'P-1001'
-          ? 'Patient Rajesh Kumar (P-1001) presents with elevated BP 160/100 mmHg, chest heaviness. Chronic hypertension on Amlodipine 5mg. Mild sulfa allergy. Considering Nitroglycerin sublingual.'
-          : selectedPatient.id === 'P-1002'
-          ? 'Patient Priya Sharma (P-1002) presents with severe unilateral throbbing migraine and nausea. Documented Penicillin allergy. Considering Ampicillin for mild sinus infection.'
-          : `Patient ${selectedPatient.fullName} (${selectedPatient.id}) presents with acute clinical presentation. Chronic conditions: ${selectedPatient.chronicConditions.join(', ') || 'None'}. Documented allergies: ${selectedPatient.allergies.join(', ') || 'None'}.`);
+        `Patient ${selectedPatient.fullName} (${selectedPatient.id}): Vitals BP ${selectedPatient.vitals?.bloodPressure || '120/80 mmHg'}, HR ${selectedPatient.vitals?.heartRate || 72} bpm, Blood Glucose ${selectedPatient.vitals?.bloodGlucose || '95 mg/dL'}. Documented chronic conditions: ${chronic}. Past medical history: ${past}. Documented allergies: ${allergies}.`;
 
       const result = await api.executeClinicalFlow({
         patientId: selectedPatient.id,
@@ -276,8 +282,17 @@ export const ClientPocDashboard: React.FC<ClientPocDashboardProps> = ({
       // Pre-fill doctor notes based on AI result
       if (result.step5ContradictionRadar?.hasConflict) {
         setDoctorDecision('ACCEPT');
+        const blockedList = result.step5ContradictionRadar.blockedDrugs || [];
+        const isBetaLactam = blockedList.some((d: string) => d.toLowerCase().includes('penicillin') || d.toLowerCase().includes('amoxicillin'));
+        const isNsaid = blockedList.some((d: string) => d.toLowerCase().includes('aspirin') || d.toLowerCase().includes('ibuprofen'));
+        const hazardText = isNsaid
+          ? 'Hard-blocked Aspirin/NSAIDs due to severe bronchospasm and AERD hazard.'
+          : isBetaLactam
+          ? 'Hard-blocked beta-lactams due to documented anaphylaxis.'
+          : `Hard-blocked contraindicated medications (${blockedList.join(', ')}).`;
+
         setDoctorNotes(
-          `Approved safe alternative recommendation: ${result.step5ContradictionRadar.geminiRecommendation?.safeAlternative || 'Azithromycin 500mg + Paracetamol 650mg'}. Hard-blocked beta-lactams due to documented anaphylaxis.`
+          `Approved safe alternative recommendation: ${result.step5ContradictionRadar.geminiRecommendation?.safeAlternative || 'Standard monitored therapy'}. ${hazardText}`
         );
         const suggested = result.step5ContradictionRadar.geminiRecommendation?.suggestedPrescription;
         if (suggested && suggested.length > 0) {
@@ -305,13 +320,14 @@ export const ClientPocDashboard: React.FC<ClientPocDashboardProps> = ({
     if (!selectedPatient) return;
     setIsSavingDecision(true);
     try {
+      const suggestedDrugs = aiResult?.step5ContradictionRadar?.geminiRecommendation?.suggestedPrescription?.map((s: any) => `${s.drugName || s.drug} (${s.dosage || s.dose || ''})`) || [];
       const res = await api.recordClinicalFlowDecision({
         patientId: selectedPatient.id,
         doctorId,
         doctorName,
         decision: doctorDecision,
-        approvedDrugs: customPrescription ? [customPrescription] : ['Azithromycin 500mg', 'Paracetamol 650mg'],
-        rejectedDrugs: aiResult?.step5ContradictionRadar?.blockedDrugs || ['Amoxicillin 500mg', 'Penicillin G'],
+        approvedDrugs: customPrescription ? [customPrescription] : (suggestedDrugs.length > 0 ? suggestedDrugs : ['Standard symptomatic therapy']),
+        rejectedDrugs: aiResult?.step5ContradictionRadar?.blockedDrugs || [],
         notes: doctorNotes,
       });
 
@@ -570,75 +586,118 @@ export const ClientPocDashboard: React.FC<ClientPocDashboardProps> = ({
               {/* Continuous Timeline line */}
               <div className="absolute left-[11px] sm:left-[15px] top-4 bottom-4 w-0.5 bg-slate-200 dark:bg-slate-700/60" />
 
-              {[
-                {
-                  id: 'cond-2026',
-                  date: '18 Sep 2026',
-                  tag: 'Today • Acute Visit',
-                  title:
-                    selectedPatient.id === 'P-1005'
-                      ? 'Acute Febrile Syndrome & Productive Chest Cough'
-                      : selectedPatient.id === 'P-1001'
-                      ? 'Acute Hypertensive Episode & Angina-Like Chest Heaviness'
-                      : selectedPatient.id === 'P-1002'
-                      ? 'Acute Unilateral Throbbing Migraine with Photophobia'
-                      : 'Acute Symptoms & Follow-up Encounter',
-                  code: 'ICD-11: CA40 / 1D01',
-                  description:
-                    selectedPatient.id === 'P-1005'
-                      ? 'Onset 2 days ago • Body Temperature 102.0°F • High fever with chills and productive sputum. Evaluated in outpatient clinic.'
-                      : 'Acute symptom presentation evaluated at current clinical encounter.',
+              {(() => {
+                const timelineItems: Array<{
+                  id: string;
+                  date: string;
+                  tag: string;
+                  title: string;
+                  code: string;
+                  description: string;
+                  status: string;
+                  variant: 'danger' | 'info' | 'success' | 'neutral';
+                }> = [];
+
+                // 1. Current Encounter / Acute Visit (grounded in imaging notes, reported symptoms, or clinical intake)
+                const imaging = selectedPatient.imagingRecords && selectedPatient.imagingRecords.length > 0
+                  ? selectedPatient.imagingRecords[0]
+                  : null;
+
+                timelineItems.push({
+                  id: 'cond-acute',
+                  date: 'Today • Clinical Evaluation',
+                  tag: 'Active Encounter',
+                  title: imaging ? `Acute Presentation: ${imaging.notes}` : 'Outpatient Health Assessment',
+                  code: imaging ? `Study: ${imaging.modality}` : 'ICD-11: QA00',
+                  description: `Current clinical assessment. Vitals BP ${selectedPatient.vitals?.bloodPressure || '120/80 mmHg'}, HR ${selectedPatient.vitals?.heartRate || 72} bpm, Blood Glucose ${selectedPatient.vitals?.bloodGlucose || 'Normal'}.`,
                   status: 'Active Encounter',
-                  variant: 'danger' as const,
-                },
-                {
-                  id: 'cond-2025',
-                  date: '14 Oct 2025',
-                  tag: 'Follow-up Review',
-                  title:
-                    selectedPatient.id === 'P-1005'
-                      ? 'Diabetic Peripheral Neuropathy (Early Stage)'
-                      : 'Hypertensive Cardiovascular Observation',
-                  code: 'ICD-11: 5A11 / 8C01',
-                  description:
-                    'Bilateral foot paresthesia noted during annual diabetic foot screen. Monofilament score: 8/10. Continued metabolic control.',
-                  status: 'Under Observation',
-                  variant: 'info' as const,
-                },
-                {
-                  id: 'cond-2024',
-                  date: '10 Mar 2024',
-                  tag: 'Confirmed Primary Diagnosis',
-                  title: selectedPatient.chronicConditions[0] || 'Type 2 Diabetes Mellitus',
-                  code: 'ICD-11: 5A11',
-                  description:
-                    'Diagnosed on oral glucose tolerance test (OGTT 210 mg/dL) & fasting blood sugar 180 mg/dL. Initiated first-line oral therapy.',
-                  status: 'Chronic Maintenance',
-                  variant: 'success' as const,
-                },
-                {
-                  id: 'cond-2023',
-                  date: '05 Nov 2023',
-                  tag: 'Longitudinal EHR Record',
-                  title: selectedPatient.chronicConditions[1] || 'Essential Hypertension (Stage 1)',
-                  code: 'ICD-11: BA00',
-                  description:
-                    'Resting blood pressure 142/90 mmHg recorded during annual wellness assessment. Lifestyle and sodium restriction recommended.',
-                  status: 'Monitored',
-                  variant: 'neutral' as const,
-                },
-                {
-                  id: 'cond-2022',
-                  date: '22 Aug 2022',
-                  tag: 'Historical Baseline',
-                  title: 'Impaired Fasting Glucose (Pre-Diabetes Phase)',
-                  code: 'ICD-11: 5A10',
-                  description:
-                    'Baseline fasting plasma glucose 114 mg/dL recorded during initial screening. Preventive dietary regimen instituted.',
-                  status: 'Historical Record',
-                  variant: 'neutral' as const,
-                },
-              ].map((record, idx) => (
+                  variant: 'danger',
+                });
+
+                // 2. Verified Chronic Conditions (from PostgreSQL)
+                if (selectedPatient.chronicConditions && selectedPatient.chronicConditions.length > 0) {
+                  selectedPatient.chronicConditions.forEach((cond, idx) => {
+                    timelineItems.push({
+                      id: `cond-chronic-${idx}`,
+                      date: 'Longitudinal EHR Record',
+                      tag: 'Confirmed Primary Diagnosis',
+                      title: cond,
+                      code: cond.toLowerCase().includes('diabetes') ? 'ICD-11: 5A11' : cond.toLowerCase().includes('hypertens') ? 'ICD-11: BA00' : 'ICD-11 Standard',
+                      description: `Diagnosed chronic condition under continuous metabolic/clinical management.`,
+                      status: 'Chronic Maintenance',
+                      variant: 'success',
+                    });
+                  });
+                }
+
+                // 3. Past Medical History / Past Critical Diseases (from PostgreSQL)
+                if (selectedPatient.pastDiseases && selectedPatient.pastDiseases.length > 0) {
+                  selectedPatient.pastDiseases.forEach((pItem: any, idx: number) => {
+                    const diseaseTitle = typeof pItem === 'string' ? pItem : pItem.condition;
+                    const diseaseYear = typeof pItem === 'string' ? 'Past Record' : (pItem.year ? `${pItem.year} Historical Baseline` : 'Past Record');
+                    const diseaseNotes = typeof pItem === 'string'
+                      ? 'Documented past clinical history under periodic surveillance and monitoring.'
+                      : (pItem.notes || `${pItem.status || 'Under periodic clinical surveillance'}`);
+
+                    timelineItems.push({
+                      id: `cond-past-${idx}`,
+                      date: diseaseYear,
+                      tag: 'Past Medical History',
+                      title: diseaseTitle,
+                      code: diseaseTitle.toLowerCase().includes('cancer') ? 'ICD-11: 2A70 / 2E60' : 'Historical Diagnosis',
+                      description: diseaseNotes,
+                      status: 'Surveillance / Remission',
+                      variant: 'info',
+                    });
+                  });
+                }
+
+                // 4. Baseline Record when NO chronic conditions or past diseases exist
+                if ((!selectedPatient.chronicConditions || selectedPatient.chronicConditions.length === 0) &&
+                    (!selectedPatient.pastDiseases || selectedPatient.pastDiseases.length === 0)) {
+                  timelineItems.push({
+                    id: 'cond-baseline',
+                    date: 'Baseline EHR Record',
+                    tag: 'Longitudinal Baseline',
+                    title: 'No Chronic Conditions Documented',
+                    code: 'ICD-11: QA00 (General Examination)',
+                    description: 'Comprehensive medical assessment confirms absence of diagnosed chronic illness or metabolic disorders.',
+                    status: 'Baseline Clear',
+                    variant: 'success',
+                  });
+                }
+
+                // 5. Active Medications Record (from PostgreSQL)
+                if (selectedPatient.currentMedications && selectedPatient.currentMedications.length > 0) {
+                  timelineItems.push({
+                    id: 'cond-meds',
+                    date: 'Pharmacotherapy Record',
+                    tag: 'Prescription Baseline',
+                    title: `Active Pharmacotherapy: ${selectedPatient.currentMedications.join(', ')}`,
+                    code: 'RxNorm Regimen',
+                    description: `Patient maintained on active prescriptions: ${selectedPatient.currentMedications.join(', ')}.`,
+                    status: 'Active Regimen',
+                    variant: 'info',
+                  });
+                }
+
+                // 6. Recent Lab Observations (from PostgreSQL)
+                if (selectedPatient.labObservations && selectedPatient.labObservations.length > 0) {
+                  const labSummary = selectedPatient.labObservations.map((l: any) => `${l.test}: ${l.value}`).join(' • ');
+                  timelineItems.push({
+                    id: 'cond-labs',
+                    date: 'Laboratory Flowsheet',
+                    tag: 'Diagnostic Testing',
+                    title: `Recent Lab Panel: ${labSummary}`,
+                    code: 'LOINC Standard',
+                    description: `Recorded laboratory observation results from patient medical chart.`,
+                    status: 'Diagnostic Record',
+                    variant: 'neutral',
+                  });
+                }
+
+                return timelineItems;
+              })().map((record, idx) => (
                 <div
                   key={record.id}
                   className="relative group animate-smooth-item"
@@ -724,20 +783,37 @@ export const ClientPocDashboard: React.FC<ClientPocDashboardProps> = ({
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
                   {[
                     {
-                      date: '18 Sep 2026',
+                      date: 'Today',
                       isToday: true,
-                      encounter: 'Acute Triage / Emergency Check',
-                      bp: selectedPatient.id === 'P-1001' ? '160/100 mmHg' : '130/85 mmHg',
-                      bpAlert: selectedPatient.id === 'P-1001',
-                      hr: selectedPatient.id === 'P-1005' ? '104 bpm' : '82 bpm',
-                      hrAlert: selectedPatient.id === 'P-1005',
-                      temp: selectedPatient.id === 'P-1005' ? '102.0°F' : '98.6°F',
-                      tempAlert: selectedPatient.id === 'P-1005',
-                      spo2: '97%',
-                      glucose: selectedPatient.id === 'P-1005' ? '180 mg/dL' : '110 mg/dL',
-                      glucoseAlert: selectedPatient.id === 'P-1005',
-                      status: '⚠️ Acute Episode',
-                      statusBg: 'bg-rose-600',
+                      encounter: 'Current Clinical Encounter',
+                      bp: selectedPatient.vitals?.bloodPressure || '120/80 mmHg',
+                      bpAlert: (() => {
+                        const sys = parseInt((selectedPatient.vitals?.bloodPressure || '120').split('/')[0]) || 120;
+                        return sys >= 140;
+                      })(),
+                      hr: selectedPatient.vitals?.heartRate ? `${selectedPatient.vitals.heartRate} bpm` : '72 bpm',
+                      hrAlert: (selectedPatient.vitals?.heartRate || 72) > 100,
+                      temp: '98.6°F',
+                      tempAlert: false,
+                      spo2: selectedPatient.vitals?.oxygenSaturation ? `${selectedPatient.vitals.oxygenSaturation}%` : '99%',
+                      glucose: selectedPatient.vitals?.bloodGlucose || '95 mg/dL',
+                      glucoseAlert: (() => {
+                        const val = parseInt(selectedPatient.vitals?.bloodGlucose || '95') || 95;
+                        return val >= 180;
+                      })(),
+                      status: (() => {
+                        const sys = parseInt((selectedPatient.vitals?.bloodPressure || '120').split('/')[0]) || 120;
+                        const glu = parseInt(selectedPatient.vitals?.bloodGlucose || '95') || 95;
+                        if (sys >= 140) return '⚠️ Elevated BP';
+                        if (glu >= 180) return '⚠️ Hyperglycemia';
+                        return 'Controlled Baseline';
+                      })(),
+                      statusBg: (() => {
+                        const sys = parseInt((selectedPatient.vitals?.bloodPressure || '120').split('/')[0]) || 120;
+                        const glu = parseInt(selectedPatient.vitals?.bloodGlucose || '95') || 95;
+                        if (sys >= 140 || glu >= 180) return 'bg-amber-600';
+                        return 'bg-emerald-600';
+                      })(),
                     },
                     {
                       date: '12 May 2026',
@@ -843,56 +919,48 @@ export const ClientPocDashboard: React.FC<ClientPocDashboardProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-                  {[
-                    {
-                      date: '18 Sep 2026 (Today)',
-                      isToday: true,
-                      drug:
-                        selectedPatient.id === 'P-1005'
-                          ? 'Amoxicillin 500mg Oral Capsule'
-                          : selectedPatient.id === 'P-1001'
-                          ? 'Nitroglycerin 0.4mg Sublingual'
-                          : 'Amoxicillin 500mg Oral Capsule',
-                      dosage: '500mg TID for 7 days',
-                      rxnorm: '7299',
-                      indication: 'Acute respiratory infection (Held for allergy safety radar check)',
-                      status: '⚠️ Pending Clearance',
-                      statusBg: 'bg-amber-600',
-                    },
-                    {
-                      date: '10 Mar 2024 - Present',
-                      isToday: false,
-                      drug:
-                        selectedPatient.id === 'P-1001'
-                          ? 'Amlodipine 5mg Oral Tablet'
-                          : 'Metformin 500mg Oral Tablet',
-                      dosage: selectedPatient.id === 'P-1001' ? '5mg once daily' : '500mg twice daily with meals',
-                      rxnorm: selectedPatient.id === 'P-1001' ? '329528' : '316256',
-                      indication: selectedPatient.id === 'P-1001' ? 'Hypertension maintenance' : 'Type 2 Diabetes glycemic control',
-                      status: 'Active Ongoing Rx',
-                      statusBg: 'bg-emerald-600',
-                    },
-                    {
-                      date: '14 Jan 2025',
-                      isToday: false,
-                      drug: 'Azithromycin 500mg Oral Tablet',
-                      dosage: '1 tablet daily x 3 days',
-                      rxnorm: '18631',
-                      indication: 'Acute bacterial rhinosinusitis (Safe macrolide alternative)',
-                      status: 'Completed Course',
-                      statusBg: 'bg-slate-600',
-                    },
-                    {
-                      date: '05 Nov 2023',
-                      isToday: false,
-                      drug: 'Glimepiride 1mg Oral Tablet',
-                      dosage: '1mg once daily before breakfast',
-                      rxnorm: '310537',
-                      indication: 'Early glycemic therapy (Discontinued after hypoglycemic episodes)',
-                      status: 'Discontinued',
-                      statusBg: 'bg-rose-600',
-                    },
-                  ].map((row, idx) => (
+                  {(() => {
+                    const rows: Array<{
+                      date: string;
+                      isToday: boolean;
+                      drug: string;
+                      dosage: string;
+                      rxnorm: string;
+                      indication: string;
+                      status: string;
+                      statusBg: string;
+                    }> = [];
+
+                    if (selectedPatient.currentMedications && selectedPatient.currentMedications.length > 0) {
+                      selectedPatient.currentMedications.forEach((med: string) => {
+                        rows.push({
+                          date: 'Active Regimen',
+                          isToday: false,
+                          drug: med,
+                          dosage: 'Maintenance clinical dosage',
+                          rxnorm: med.toLowerCase().includes('metformin') ? '316256' : med.toLowerCase().includes('sildenafil') ? '312961' : med.toLowerCase().includes('amlodipine') ? '329528' : 'RxNorm Standard',
+                          indication: 'Prescribed maintenance therapy',
+                          status: 'Active Ongoing Rx',
+                          statusBg: 'bg-emerald-600',
+                        });
+                      });
+                    }
+
+                    if (rows.length === 0) {
+                      rows.push({
+                        date: 'Clinical Flowsheet',
+                        isToday: false,
+                        drug: 'No Active Prescription Medications',
+                        dosage: 'N/A',
+                        rxnorm: 'N/A',
+                        indication: 'No ongoing daily pharmaceutical regimen recorded in EHR.',
+                        status: 'Clear Baseline',
+                        statusBg: 'bg-slate-600',
+                      });
+                    }
+
+                    return rows;
+                  })().map((row, idx) => (
                     <tr
                       key={idx}
                       className={`hover:bg-blue-50/40 dark:hover:bg-blue-950/20 transition-colors animate-table-row ${
@@ -943,48 +1011,48 @@ export const ClientPocDashboard: React.FC<ClientPocDashboardProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-                  {[
-                    {
-                      date: '18 Sep 2026 (Today)',
-                      isToday: true,
-                      test: 'Complete Blood Count (CBC) & CRP',
-                      results: 'WBC: 11,800 / µL • CRP: 24 mg/L • Neutrophils: 78%',
-                      refRange: 'WBC: 4,500-11,000 / CRP: < 5.0 mg/L',
-                      loinc: '58410-2',
-                      interp: '⚠️ Acute Inflammatory Reaction',
-                      interpBg: 'bg-rose-600',
-                    },
-                    {
-                      date: '20 Feb 2026',
-                      isToday: false,
-                      test: 'Glycated Hemoglobin (HbA1c) & Fasting Glucose',
-                      results: selectedPatient.id === 'P-1005' ? 'HbA1c: 8.2% • Fasting Glucose: 180 mg/dL' : 'HbA1c: 6.4% • Fasting Glucose: 110 mg/dL',
-                      refRange: 'HbA1c: < 5.7% (Normal) • < 7.0% (Target)',
-                      loinc: '4548-4',
-                      interp: selectedPatient.id === 'P-1005' ? 'Sub-Optimal Glycemia' : 'Controlled Baseline',
-                      interpBg: selectedPatient.id === 'P-1005' ? 'bg-amber-600' : 'bg-emerald-600',
-                    },
-                    {
-                      date: '14 Oct 2025',
-                      isToday: false,
-                      test: 'Comprehensive Renal & Lipid Panel',
-                      results: 'Creatinine: 1.1 mg/dL • eGFR: 84 mL/min • Total Cholesterol: 198 mg/dL',
-                      refRange: 'Creatinine: 0.7-1.3 mg/dL • eGFR: > 60',
-                      loinc: '24362-6',
-                      interp: 'Normal Organ Function',
-                      interpBg: 'bg-emerald-600',
-                    },
-                    {
-                      date: '10 Mar 2024',
-                      isToday: false,
-                      test: 'Initial Diagnostic Baseline Workup',
-                      results: 'HbA1c: 8.8% • Fasting Sugar: 215 mg/dL • Microalbumin: 28 mg/g',
-                      refRange: 'Standard diagnostic admission workup',
-                      loinc: '4548-4',
-                      interp: 'Diagnostic Baseline',
-                      interpBg: 'bg-blue-600',
-                    },
-                  ].map((row, idx) => (
+                  {(() => {
+                    const rows: Array<{
+                      date: string;
+                      isToday: boolean;
+                      test: string;
+                      results: string;
+                      refRange: string;
+                      loinc: string;
+                      interp: string;
+                      interpBg: string;
+                    }> = [];
+
+                    if (selectedPatient.labObservations && selectedPatient.labObservations.length > 0) {
+                      selectedPatient.labObservations.forEach((lab: any) => {
+                        rows.push({
+                          date: 'Recent Assessment',
+                          isToday: false,
+                          test: lab.test,
+                          results: lab.value,
+                          refRange: lab.test.toLowerCase().includes('hba1c') ? 'HbA1c: < 5.7% (Normal) • < 7.0% (Target)' : 'Clinical Normal Range',
+                          loinc: lab.test.toLowerCase().includes('hba1c') ? '4548-4' : lab.test.toLowerCase().includes('creatinine') ? '24362-6' : 'LOINC Standard',
+                          interp: 'Verified Lab Record',
+                          interpBg: 'bg-blue-600',
+                        });
+                      });
+                    }
+
+                    if (rows.length === 0) {
+                      rows.push({
+                        date: 'Baseline Flowsheet',
+                        isToday: false,
+                        test: 'No Laboratory Flowsheets on Record',
+                        results: 'Normal Clinical Baseline',
+                        refRange: 'All baseline biomarkers within normal clinical limits',
+                        loinc: 'LOINC Standard',
+                        interp: 'Baseline Normal',
+                        interpBg: 'bg-emerald-600',
+                      });
+                    }
+
+                    return rows;
+                  })().map((row, idx) => (
                     <tr
                       key={idx}
                       className={`hover:bg-blue-50/40 dark:hover:bg-blue-950/20 transition-colors animate-table-row ${
@@ -1231,7 +1299,7 @@ export const ClientPocDashboard: React.FC<ClientPocDashboardProps> = ({
                   Analyzing Patient Clinical Records with AI...
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Extracting clinical entities with Gemini NLP, detecting clinical care gaps, and checking the safety contradiction radar against live ICD-11 & RxNorm standards.
+                  Extracting clinical entities with In-House Clinical NLP (nanba-clinical), detecting clinical care gaps, and checking the safety contradiction radar against live ICD-11 & RxNorm standards.
                 </p>
               </div>
 
@@ -1291,17 +1359,30 @@ export const ClientPocDashboard: React.FC<ClientPocDashboardProps> = ({
                       <span>Longitudinal Medical Profile</span>
                     </div>
                     <p className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-medium">
-                      {aiResult.step6DoctorWorkspace?.pastHistorySummary || `Known chronic conditions: ${selectedPatient.chronicConditions.join(', ') || 'None'}. Allergies: ${selectedPatient.allergies.join(', ') || 'None'}.`}
+                      {aiResult.step6DoctorWorkspace?.pastHistorySummary || `Known chronic conditions: ${selectedPatient.chronicConditions.join(', ') || 'None'}. Allergies: ${selectedPatient.allergies.filter((a: string) => !a.toLowerCase().startsWith('null') && !a.toLowerCase().startsWith('none')).join(', ') || 'None documented'}.`}
                     </p>
                     <div className="pt-2 flex flex-wrap gap-2 text-[11px]">
                       <span className="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 font-semibold">
-                        Condition: {aiResult.step2NlpBuckets?.disease || selectedPatient.chronicConditions[0] || 'Type 2 Diabetes'}
+                        Condition: {selectedPatient.chronicConditions && selectedPatient.chronicConditions.length > 0
+                          ? selectedPatient.chronicConditions.join(', ')
+                          : (aiResult.step2NlpBuckets?.disease && !aiResult.step2NlpBuckets.disease.toLowerCase().includes('none')
+                              ? aiResult.step2NlpBuckets.disease
+                              : 'None documented')}
                       </span>
                       <span className="px-2 py-0.5 rounded bg-violet-100 dark:bg-violet-950 text-violet-800 dark:text-violet-200 font-semibold">
-                        Maintenance: {aiResult.step2NlpBuckets?.medication || 'Metformin 500mg'}
+                        Maintenance: {selectedPatient.currentMedications && selectedPatient.currentMedications.length > 0
+                          ? selectedPatient.currentMedications.join(', ')
+                          : (aiResult.step2NlpBuckets?.medication && !aiResult.step2NlpBuckets.medication.toLowerCase().includes('none')
+                              ? aiResult.step2NlpBuckets.medication
+                              : 'None documented')}
                       </span>
                       <span className="px-2 py-0.5 rounded bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 font-semibold">
-                        Allergy: {aiResult.step2NlpBuckets?.allergy || selectedPatient.allergies[0] || 'Penicillin'}
+                        Allergy: {(() => {
+                          const candidate = selectedPatient.allergies?.filter((a: string) => a && !a.toLowerCase().startsWith('null') && !a.toLowerCase().startsWith('none') && a.trim() !== '') || [];
+                          if (candidate.length > 0) return candidate.join(', ');
+                          if (aiResult.step2NlpBuckets?.allergy && !aiResult.step2NlpBuckets.allergy.toLowerCase().includes('none') && !aiResult.step2NlpBuckets.allergy.toLowerCase().includes('null')) return aiResult.step2NlpBuckets.allergy;
+                          return 'No known drug allergies (NKDA)';
+                        })()}
                       </span>
                     </div>
                   </div>
@@ -1497,9 +1578,7 @@ export const ClientPocDashboard: React.FC<ClientPocDashboardProps> = ({
                       <Stethoscope className="w-5 h-5 text-blue-600" />
                       Doctor Decision &amp; EHR Database Commit
                     </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                      Review AI recommendations, customize orders, and permanently commit to EHR database
-                    </p>
+                   
                   </div>
 
                   <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
@@ -1586,9 +1665,7 @@ export const ClientPocDashboard: React.FC<ClientPocDashboardProps> = ({
 
                   {/* Commit Action Button */}
                   <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="text-[11px] text-slate-400">
-                      Commits cryptographically sealed bundle to PostgreSQL EHR table &amp; FHIR R4 ledger.
-                    </div>
+                    
 
                     <button
                       onClick={handleCommitToDatabase}

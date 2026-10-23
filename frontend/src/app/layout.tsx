@@ -12,7 +12,7 @@ const poppins = Poppins({
 
 export const metadata: Metadata = {
   title: 'EN NANBA — Clinical Intelligence Platform POC',
-  description: 'AI-driven Clinical Intelligence Platform Doctor Workspace with Neo4j Graph, Qdrant Vector Normalization, Gap & Contradiction Radar, and Gemini RAG Reasoning.',
+  description: 'AI-driven Clinical Intelligence Platform Doctor Workspace with Neo4j Graph, Qdrant Vector Normalization, Gap & Contradiction Radar, and In-House Meta Llama 3.2 (nanba-clinical) RAG Reasoning.',
 };
 
 export default function RootLayout({
@@ -21,8 +21,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${poppins.variable}`}>
-      <body className="min-h-screen antialiased selection:bg-[#00cba9] selection:text-white font-sans bg-slate-50 dark:bg-slate-950">
+    <html lang="en" className={`${poppins.variable}`} suppressHydrationWarning>
+      <body className="min-h-screen antialiased selection:bg-[#00cba9] selection:text-white font-sans bg-slate-50 dark:bg-slate-950" suppressHydrationWarning>
         <ThemeProvider>
           {children}
         </ThemeProvider>
