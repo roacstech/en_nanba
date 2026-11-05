@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { User, Heart, Activity, AlertTriangle, FileText, Droplet, ShieldAlert, ChevronDown, Clock } from 'lucide-react';
+import { User, Heart, Activity, AlertTriangle, FileText, Droplet, ShieldAlert, ChevronDown, Clock, Pill } from 'lucide-react';
 import { PatientProfile } from '../lib/api';
 
 interface PatientBannerProps {
@@ -77,8 +77,8 @@ export const PatientBanner: React.FC<PatientBannerProps> = ({
         </div>
       </div>
 
-      {/* Vitals, Chronic Conditions & Known Allergies Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 text-xs">
+      {/* Vitals, Chronic Conditions, Medications & Known Allergies Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-6 text-xs">
         {/* Vitals */}
         <div className="pro-card p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-600 dark:text-slate-400 font-semibold mb-3">
@@ -109,14 +109,39 @@ export const PatientBanner: React.FC<PatientBannerProps> = ({
             <FileText className="w-4 h-4 text-slate-500" /> Active Diagnoses (ICD-11)
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {selectedPatient.chronicConditions.map((cond, idx) => (
-              <span
-                key={idx}
-                className="px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium"
-              >
-                {cond}
-              </span>
-            ))}
+            {selectedPatient.chronicConditions && selectedPatient.chronicConditions.length > 0 ? (
+              selectedPatient.chronicConditions.map((cond, idx) => (
+                <span
+                  key={idx}
+                  className="px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium"
+                >
+                  {cond}
+                </span>
+              ))
+            ) : (
+              <span className="text-slate-400 italic text-[11px]">No chronic conditions documented</span>
+            )}
+          </div>
+        </div>
+
+        {/* Current Medications */}
+        <div className="pro-card p-4 flex flex-col justify-between">
+          <div className="flex items-center gap-1.5 text-slate-900 dark:text-white font-semibold mb-3">
+            <Pill className="w-4 h-4 text-slate-500" /> Active Medications (RxNorm)
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {selectedPatient.currentMedications && selectedPatient.currentMedications.length > 0 ? (
+              selectedPatient.currentMedications.map((med, idx) => (
+                <span
+                  key={idx}
+                  className="px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium"
+                >
+                  {med}
+                </span>
+              ))
+            ) : (
+              <span className="text-slate-400 italic text-[11px]">No active prescriptions recorded</span>
+            )}
           </div>
         </div>
 

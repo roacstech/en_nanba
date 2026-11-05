@@ -381,12 +381,18 @@ export interface OpenStaxAnatomyEntry {
   coreStructures: string[];
   keyPhysiologicalMechanisms: string[];
   clinicalRelevance: string;
-  licenseType: 'CC BY-NC-SA 4.0';
-  aiIngestionStatus: 'RESTRICTED / NO AI TRAINING';
-  commercialPipelinePolicy: 'EXCLUDED FROM COMMERCIAL AI TRAINING PIPELINE';
+  licenseType: 'CC BY-NC-SA 4.0' | string;
+  aiIngestionStatus: 'RESTRICTED / NO AI TRAINING' | string;
+  commercialPipelinePolicy: 'EXCLUDED FROM COMMERCIAL AI TRAINING PIPELINE' | string;
   governanceNotice: string;
   officialBookUrl: string;
   officialLicenseUrl: string;
+  conceptId?: string;
+  fsn?: string;
+  sourceApi?: string;
+  synonyms?: string[];
+  uberonId?: string;
+  whoIcd11Code?: string;
 }
 
 export interface OpenStaxLicensingMetadata {
@@ -401,6 +407,10 @@ export interface OpenStaxLicensingMetadata {
   clientDirective: string;
   officialBookUrl: string;
   officialLicenseUrl: string;
+  totalChapters?: number;
+  totalReferencesCount?: number;
+  apiStatus?: string;
+  totalAnatomicalStructures?: number;
 }
 
 export interface OpenStaxCatalogResponse {

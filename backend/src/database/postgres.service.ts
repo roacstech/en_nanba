@@ -271,11 +271,13 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
       dob: '1968-04-12',
       phone: '+91 98401 23456',
       bloodType: 'B+',
-      chronicConditions: ['Type 2 diabetes mellitus', 'Essential hypertension', 'Angina pectoris'],
-      allergies: ['Dust mites', 'Sulfa drugs (mild rash)'],
+      chronicConditions: ['Type 2 Diabetes Mellitus', 'Essential Hypertension', 'Chronic Kidney Disease (Stage 2)'],
+      allergies: ['Codeine (Severe Nausea)'],
+      currentMedications: ['Metformin 500mg Tablet', 'Telmisartan 40mg Tablet', 'Glimepiride 2mg Tablet'],
+      pastDiseases: [],
       vitals: {
         bloodPressure: '152/94 mmHg',
-        heartRate: 82,
+        heartRate: 84,
         bloodGlucose: '184 mg/dL',
         oxygenSaturation: 97,
         bmi: 28.4,
@@ -293,8 +295,10 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
       dob: '1992-11-03',
       phone: '+91 98402 78901',
       bloodType: 'O+',
-      chronicConditions: ['Migraine without aura'],
-      allergies: ['Penicillin (Anaphylaxis risk)'],
+      chronicConditions: ['Bronchial Asthma', 'Allergic Rhinitis'],
+      allergies: ['Penicillin (Severe Anaphylaxis Risk)'],
+      currentMedications: ['Salbutamol 100mcg Inhaler', 'Cetirizine 10mg Tablet'],
+      pastDiseases: [],
       vitals: {
         bloodPressure: '118/76 mmHg',
         heartRate: 74,
@@ -309,65 +313,112 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
     const p3: PatientProfile = {
       id: 'P-1003',
       enNanbaId: 'EN-IND-2026-09814',
-      fullName: 'Dr. Anita Desai',
+      fullName: 'kumar',
       age: 67,
-      gender: 'F',
+      gender: 'M',
       dob: '1959-07-22',
       phone: '+91 98403 45678',
       bloodType: 'A+',
-      chronicConditions: ['Type 2 Diabetes'],
+      chronicConditions: ['Type 2 Diabetes Mellitus', 'Diabetic Peripheral Neuropathy'],
+      currentMedications: ['Metformin 850mg Tablet', 'Pregabalin 75mg Capsule'],
       pastDiseases: [
         {
-          year: '2025',
-          condition: 'Cancer',
-          status: 'Post-treatment surveillance / Stable',
-          notes: 'Diagnosed in 2025. Annual oncological follow-up and tumor marker surveillance.',
-        },
-        {
           year: '2024',
-          condition: 'Blood Cancer',
-          status: 'In Remission / Hematologic Monitoring',
-          notes: 'Diagnosed in 2024 (Hematologic malignancy/leukemia). Chemotherapy protocol completed; currently in complete clinical remission.',
+          condition: 'Acute Lymphoblastic Leukemia',
+          status: 'In Complete Remission',
+          notes: 'Diagnosed in 2024. Chemotherapy completed; periodic surveillance oncological monitoring.',
         },
       ],
-      allergies: ['Penicillin (Severe Anaphylaxis Risk)'],
+      allergies: ['NSAIDs (Gastric Ulcer Hazard)'],
       vitals: {
-        bloodPressure: '120/80 mmHg',
-        heartRate: 72,
-        bloodGlucose: '180 mg/dL',
+        bloodPressure: '128/82 mmHg',
+        heartRate: 78,
+        bloodGlucose: '178 mg/dL',
         oxygenSaturation: 99,
-        bmi: 22.5,
+        bmi: 24.5,
       },
       createdAt: '2026-09-16T10:17:48.237Z',
       updatedAt: '2026-09-17T06:12:01.040Z',
     };
 
+    const p4: PatientProfile = {
+      id: 'P-1004',
+      enNanbaId: 'EN-IND-2026-09816',
+      fullName: 'Ramesh Chandra',
+      age: 62,
+      gender: 'M',
+      dob: '1964-02-18',
+      phone: '+91 98404 98765',
+      bloodType: 'AB+',
+      chronicConditions: ['Essential Hypertension', 'Dyslipidemia', 'Coronary Artery Disease'],
+      allergies: ['Sulfa drugs (Cutaneous rash)'],
+      currentMedications: ['Amlodipine 5mg Tablet', 'Atorvastatin 40mg Tablet', 'Clopidogrel 75mg Tablet'],
+      pastDiseases: [],
+      vitals: {
+        bloodPressure: '144/90 mmHg',
+        heartRate: 82,
+        bloodGlucose: '108 mg/dL',
+        oxygenSaturation: 98,
+        bmi: 26.8,
+      },
+      createdAt: '2026-09-16T11:00:00Z',
+      updatedAt: '2026-09-17T07:00:00Z',
+    };
+
     const p5: PatientProfile = {
       id: 'P-1005',
       enNanbaId: 'EN-IND-2026-09815',
-      fullName: 'manikandan',
+      fullName: 'Manikandan',
       age: 58,
       gender: 'M',
       dob: '1968-06-15',
       phone: '+91 98405 11223',
       bloodType: 'B+',
-      chronicConditions: [],
-      allergies: [],
+      chronicConditions: ['Type 2 Diabetes Mellitus', 'Erectile Dysfunction'],
+      allergies: ['Shellfish / Seafood'],
+      currentMedications: ['Metformin 500mg Oral Tablet', 'Sildenafil 50mg Oral Tablet'],
+      pastDiseases: [],
       vitals: {
-        bloodPressure: '120/80 mmHg',
-        heartRate: 72,
-        bloodGlucose: '95 mg/dL',
+        bloodPressure: '122/80 mmHg',
+        heartRate: 70,
+        bloodGlucose: '135 mg/dL',
         oxygenSaturation: 99,
-        bmi: 22.5,
+        bmi: 23.5,
       },
       createdAt: '2026-09-16T12:53:17.800Z',
       updatedAt: '2026-09-22T05:15:29.618Z',
     };
 
+    const p6: PatientProfile = {
+      id: 'P-1006',
+      enNanbaId: 'EN-IND-2026-09817',
+      fullName: 'Pooja Nair',
+      age: 29,
+      gender: 'F',
+      dob: '1997-08-25',
+      phone: '+91 98406 54321',
+      bloodType: 'O-',
+      chronicConditions: ['Bronchial Asthma', 'Atopic Dermatitis'],
+      allergies: ['Aspirin', 'Ibuprofen (AERD / Severe Bronchospasm)'],
+      currentMedications: ['Budesonide/Formoterol 160/4.5mcg Inhaler', 'Montelukast 10mg Tablet'],
+      pastDiseases: [],
+      vitals: {
+        bloodPressure: '115/74 mmHg',
+        heartRate: 76,
+        bloodGlucose: '88 mg/dL',
+        oxygenSaturation: 98,
+        bmi: 21.4,
+      },
+      createdAt: '2026-09-20T08:00:00Z',
+      updatedAt: '2026-09-22T10:00:00Z',
+    };
+
     this.inMemoryPatients.set(p1.id, p1);
     this.inMemoryPatients.set(p2.id, p2);
     this.inMemoryPatients.set(p3.id, p3);
+    this.inMemoryPatients.set(p4.id, p4);
     this.inMemoryPatients.set(p5.id, p5);
+    this.inMemoryPatients.set(p6.id, p6);
 
     // Seed sample evidence ledger
     this.inMemoryEvidenceLedger.push(
@@ -490,6 +541,7 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
             chronicConditions: r.chronic_conditions || [],
             pastDiseases: r.past_diseases || [],
             allergies: r.allergies || [],
+            currentMedications: r.medications || [],
             vitals: r.vitals || {},
             createdAt: r.created_at?.toISOString?.() || r.created_at,
             updatedAt: r.updated_at?.toISOString?.() || r.updated_at,
@@ -568,7 +620,13 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
     }
 
     // Fail-safe default doctor fallback
-    if (normalizedEmail === 'sada@ennanba.ai' || normalizedEmail === 'cmc-card-001') {
+    if (
+      normalizedEmail === 'sada@ennanba.ai' ||
+      normalizedEmail === 'sada@ennamba.ai' ||
+      normalizedEmail === 'doctor@ennanba.ai' ||
+      normalizedEmail === 'doctor@gmail.com' ||
+      normalizedEmail === 'cmc-card-001'
+    ) {
       const doc = this.getDefaultDoctor();
       this.inMemoryUsers.set(doc.id, doc);
       return doc;
@@ -793,13 +851,14 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
     if (this.isConnected && this.pool) {
       try {
         await this.pool.query(
-          `INSERT INTO patients (id, en_nanba_id, full_name, age, gender, dob, phone, blood_type, chronic_conditions, past_diseases, allergies, vitals, updated_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
+          `INSERT INTO patients (id, en_nanba_id, full_name, age, gender, dob, phone, blood_type, chronic_conditions, past_diseases, allergies, medications, vitals, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
            ON CONFLICT (id) DO UPDATE SET
              full_name = EXCLUDED.full_name,
              chronic_conditions = EXCLUDED.chronic_conditions,
              past_diseases = EXCLUDED.past_diseases,
              allergies = EXCLUDED.allergies,
+             medications = EXCLUDED.medications,
              vitals = EXCLUDED.vitals,
              updated_at = NOW()`,
           [
@@ -814,6 +873,7 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
             JSON.stringify(patient.chronicConditions || []),
             JSON.stringify(patient.pastDiseases || []),
             JSON.stringify(patient.allergies || []),
+            JSON.stringify(patient.currentMedications || []),
             JSON.stringify(patient.vitals || {}),
           ],
         );

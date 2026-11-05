@@ -266,10 +266,13 @@ export const ClientPocDashboard: React.FC<ClientPocDashboardProps> = ({
       const allergies = selectedPatient.allergies && selectedPatient.allergies.length > 0
         ? selectedPatient.allergies.filter((a: string) => a && !a.toLowerCase().startsWith('null') && !a.toLowerCase().startsWith('none') && a.trim() !== '').join(', ')
         : 'None documented';
+      const meds = selectedPatient.currentMedications && selectedPatient.currentMedications.length > 0
+        ? selectedPatient.currentMedications.join(', ')
+        : 'None';
 
       const textToAnalyze =
         clinicalNote.trim() ||
-        `Patient ${selectedPatient.fullName} (${selectedPatient.id}): Vitals BP ${selectedPatient.vitals?.bloodPressure || '120/80 mmHg'}, HR ${selectedPatient.vitals?.heartRate || 72} bpm, Blood Glucose ${selectedPatient.vitals?.bloodGlucose || '95 mg/dL'}. Documented chronic conditions: ${chronic}. Past medical history: ${past}. Documented allergies: ${allergies}.`;
+        `Patient ${selectedPatient.fullName} (${selectedPatient.id}): Vitals BP ${selectedPatient.vitals?.bloodPressure || '120/80 mmHg'}, HR ${selectedPatient.vitals?.heartRate || 72} bpm, Blood Glucose ${selectedPatient.vitals?.bloodGlucose || '95 mg/dL'}. Documented chronic conditions: ${chronic}. Past medical history: ${past}. Current medications: ${meds}. Documented allergies: ${allergies}.`;
 
       const result = await api.executeClinicalFlow({
         patientId: selectedPatient.id,
@@ -291,8 +294,10 @@ export const ClientPocDashboard: React.FC<ClientPocDashboardProps> = ({
           ? 'Hard-blocked beta-lactams due to documented anaphylaxis.'
           : `Hard-blocked contraindicated medications (${blockedList.join(', ')}).`;
 
+        const rawAlternative = result.step5ContradictionRadar.geminiRecommendation?.safeAlternative || 'Standard monitored therapy';
+        const cleanAlternative = rawAlternative.replace(/^[💡\s]+/, '').trim();
         setDoctorNotes(
-          `Approved safe alternative recommendation: ${result.step5ContradictionRadar.geminiRecommendation?.safeAlternative || 'Standard monitored therapy'}. ${hazardText}`
+          `Approved safe alternative recommendation: ${cleanAlternative}. ${hazardText}`
         );
         const suggested = result.step5ContradictionRadar.geminiRecommendation?.suggestedPrescription;
         if (suggested && suggested.length > 0) {
@@ -1311,22 +1316,22 @@ export const ClientPocDashboard: React.FC<ClientPocDashboardProps> = ({
           {!isAnalyzing && aiResult && (
             <div className="space-y-6 animate-fadeIn">
               {/* 1. Patient Clinical Overview & Diagnostic Synthesis */}
-              <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 space-y-5">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-xs border border-slate-200 dark:border-slate-800 space-y-5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center border border-slate-200 dark:border-slate-700">
                       <Stethoscope className="w-4 h-4" />
                     </div>
                     <div>
-                      <h3 className="text-base font-black text-slate-900 dark:text-white">
-                        Patient Clinical Overview & Diagnostic Synthesis
+                      <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+                        Patient Clinical Overview &amp; Diagnostic Synthesis
                       </h3>
                       <p className="text-xs text-slate-500 dark:text-slate-400">
                         Cross-referencing longitudinal EHR history with acute encounter presentation
                       </p>
                     </div>
                   </div>
-                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-800 w-fit">
+                  <span className="px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 w-fit">
                     AI Synthesis Complete
                   </span>
                 </div>
@@ -1334,50 +1339,53 @@ export const ClientPocDashboard: React.FC<ClientPocDashboardProps> = ({
                 {/* Two Column Grid: Present Encounter vs Past Medical Profile */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Present Encounter */}
-                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-2">
-                    <div className="flex items-center gap-2 text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
-                      <Activity className="w-3.5 h-3.5" />
+                  <div className="p-4 rounded-xl bg-slate-50/70 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-2">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                      <Activity className="w-3.5 h-3.5 text-slate-500" />
                       <span>Today's Acute Presentation</span>
                     </div>
-                    <p className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-medium">
+                    <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-normal">
                       {aiResult.step6DoctorWorkspace?.presentEncounterSummary || aiResult.step1RawText?.text}
                     </p>
                     <div className="pt-2 flex flex-wrap gap-2 text-[11px]">
-                      <span className="px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 font-semibold">
-                        Symptom: {aiResult.step2NlpBuckets?.symptom || 'Acute Febrile Syndrome'}
+                      <span className="px-2.5 py-1 rounded-md bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 font-medium">
+                        <span className="text-slate-500 font-normal">Symptom: </span>{aiResult.step2NlpBuckets?.symptom || 'Acute Febrile Syndrome'}
                       </span>
-                      <span className="px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-200 font-semibold">
-                        Lab Observation: {aiResult.step2NlpBuckets?.labTest || 'HbA1c 8.2%'}
+                      <span className="px-2.5 py-1 rounded-md bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 font-medium">
+                        <span className="text-slate-500 font-normal">Lab Observation: </span>{aiResult.step2NlpBuckets?.labTest || 'HbA1c 8.2%'}
                       </span>
                     </div>
                   </div>
 
                   {/* Past Medical Profile */}
-                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-2">
-                    <div className="flex items-center gap-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
-                      <FileText className="w-3.5 h-3.5" />
+                  <div className="p-4 rounded-xl bg-slate-50/70 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-2">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                      <FileText className="w-3.5 h-3.5 text-slate-500" />
                       <span>Longitudinal Medical Profile</span>
                     </div>
-                    <p className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-medium">
+                    <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-normal">
                       {aiResult.step6DoctorWorkspace?.pastHistorySummary || `Known chronic conditions: ${selectedPatient.chronicConditions.join(', ') || 'None'}. Allergies: ${selectedPatient.allergies.filter((a: string) => !a.toLowerCase().startsWith('null') && !a.toLowerCase().startsWith('none')).join(', ') || 'None documented'}.`}
                     </p>
                     <div className="pt-2 flex flex-wrap gap-2 text-[11px]">
-                      <span className="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 font-semibold">
-                        Condition: {selectedPatient.chronicConditions && selectedPatient.chronicConditions.length > 0
+                      <span className="px-2.5 py-1 rounded-md bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 font-medium">
+                        <span className="text-slate-500 font-normal">Condition: </span>
+                        {selectedPatient.chronicConditions && selectedPatient.chronicConditions.length > 0
                           ? selectedPatient.chronicConditions.join(', ')
                           : (aiResult.step2NlpBuckets?.disease && !aiResult.step2NlpBuckets.disease.toLowerCase().includes('none')
                               ? aiResult.step2NlpBuckets.disease
                               : 'None documented')}
                       </span>
-                      <span className="px-2 py-0.5 rounded bg-violet-100 dark:bg-violet-950 text-violet-800 dark:text-violet-200 font-semibold">
-                        Maintenance: {selectedPatient.currentMedications && selectedPatient.currentMedications.length > 0
+                      <span className="px-2.5 py-1 rounded-md bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 font-medium">
+                        <span className="text-slate-500 font-normal">Maintenance: </span>
+                        {selectedPatient.currentMedications && selectedPatient.currentMedications.length > 0
                           ? selectedPatient.currentMedications.join(', ')
                           : (aiResult.step2NlpBuckets?.medication && !aiResult.step2NlpBuckets.medication.toLowerCase().includes('none')
                               ? aiResult.step2NlpBuckets.medication
                               : 'None documented')}
                       </span>
-                      <span className="px-2 py-0.5 rounded bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 font-semibold">
-                        Allergy: {(() => {
+                      <span className="px-2.5 py-1 rounded-md bg-rose-50/80 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border border-rose-200/80 dark:border-rose-900/60 font-medium">
+                        <span className="text-rose-600 dark:text-rose-400 font-semibold">Allergy: </span>
+                        {(() => {
                           const candidate = selectedPatient.allergies?.filter((a: string) => a && !a.toLowerCase().startsWith('null') && !a.toLowerCase().startsWith('none') && a.trim() !== '') || [];
                           if (candidate.length > 0) return candidate.join(', ');
                           if (aiResult.step2NlpBuckets?.allergy && !aiResult.step2NlpBuckets.allergy.toLowerCase().includes('none') && !aiResult.step2NlpBuckets.allergy.toLowerCase().includes('null')) return aiResult.step2NlpBuckets.allergy;
@@ -1391,24 +1399,24 @@ export const ClientPocDashboard: React.FC<ClientPocDashboardProps> = ({
                 {/* Differential Diagnoses */}
                 {aiResult.step6DoctorWorkspace?.differentialDiagnoses && aiResult.step6DoctorWorkspace.differentialDiagnoses.length > 0 && (
                   <div className="space-y-2 pt-1">
-                    <div className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                       AI Differential Diagnoses &amp; Clinical Probabilities:
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       {aiResult.step6DoctorWorkspace.differentialDiagnoses.map((diag: any, idx: number) => (
                         <div
                           key={idx}
-                          className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between"
+                          className="p-3 rounded-xl bg-slate-50/70 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between"
                         >
                           <div className="min-w-0 flex-1 pr-2">
-                            <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                            <div className="text-xs font-semibold text-slate-900 dark:text-white truncate">
                               {diag.condition || diag.conditionName}
                             </div>
-                            <div className="text-[10px] text-slate-500 font-mono">
+                            <div className="text-[10px] text-slate-500 font-mono mt-0.5">
                               ICD-11: {diag.code || diag.icd11Code || diag.icdCode || 'CA00'}
                             </div>
                           </div>
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shrink-0">
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shrink-0">
                             {diag.probability ? `${diag.probability}` : diag.confidenceScore ? `${Math.round(diag.confidenceScore * 100)}%` : 'HIGH'}
                           </span>
                         </div>
@@ -1422,14 +1430,14 @@ export const ClientPocDashboard: React.FC<ClientPocDashboardProps> = ({
               {(() => {
                 const careGaps = getPatientCareGaps(selectedPatient, report);
                 return (
-                  <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 space-y-4">
+                  <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-xs border border-slate-200 dark:border-slate-800 space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs">
-                          <AlertCircle className="w-4 h-4" />
+                        <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center border border-slate-200 dark:border-slate-700">
+                          <AlertCircle className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                         </div>
                         <div>
-                          <h3 className="text-base font-black text-slate-900 dark:text-white">
+                          <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
                             Care Gaps &amp; Missing Clinical Records Radar
                           </h3>
                           <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -1437,8 +1445,8 @@ export const ClientPocDashboard: React.FC<ClientPocDashboardProps> = ({
                           </p>
                         </div>
                       </div>
-                      <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 w-fit">
-                        {careGaps.length} Actionable Gaps Identified
+                      <span className="px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 w-fit">
+                        {careGaps.length} Actionable Gap{careGaps.length !== 1 ? 's' : ''} Identified
                       </span>
                     </div>
 
@@ -1446,25 +1454,25 @@ export const ClientPocDashboard: React.FC<ClientPocDashboardProps> = ({
                       {careGaps.map((gap) => (
                         <div
                           key={gap.id}
-                          className="p-4 rounded-2xl bg-white dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800/80 hover:border-amber-300 dark:hover:border-amber-700 transition-colors space-y-2"
+                          className="p-4 rounded-xl bg-slate-50/70 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-2 hover:border-slate-300 transition-colors"
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
                               {gap.category}
                             </span>
                             <div className="flex items-center gap-1.5">
                               <span
-                                className={`px-2 py-0.5 rounded text-[10px] font-black ${
+                                className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${
                                   gap.status === 'OVERDUE'
-                                    ? 'bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300'
+                                    ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60'
                                     : gap.status === 'MISSING_DATA'
-                                    ? 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300'
-                                    : 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300'
+                                    ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60'
+                                    : 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
                                 }`}
                               >
                                 {gap.status.replace('_', ' ')}
                               </span>
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
                                 {gap.priority}
                               </span>
                             </div>
@@ -1473,15 +1481,15 @@ export const ClientPocDashboard: React.FC<ClientPocDashboardProps> = ({
                           <h4 className="text-xs font-bold text-slate-900 dark:text-white">
                             {gap.title}
                           </h4>
-                          <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                          <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed font-normal">
                             {gap.description}
                           </p>
 
-                          <div className="pt-1 flex flex-wrap items-center justify-between gap-2 text-[10px] border-t border-slate-100 dark:border-slate-800/80 mt-2">
-                            <span className="font-mono text-slate-500 dark:text-slate-400 font-semibold">
+                          <div className="pt-2 flex flex-wrap items-center justify-between gap-2 text-[10px] border-t border-slate-200/60 dark:border-slate-800 mt-2">
+                            <span className="font-mono text-slate-500 font-medium">
                               {gap.recommendedStandard}
                             </span>
-                            <span className="text-amber-600 dark:text-amber-400 font-bold">
+                            <span className="text-slate-600 dark:text-slate-400 font-medium">
                               {gap.duePeriod}
                             </span>
                           </div>
@@ -1494,42 +1502,48 @@ export const ClientPocDashboard: React.FC<ClientPocDashboardProps> = ({
 
               {/* 3. Contradiction Radar Safety Alert */}
               {aiResult.step5ContradictionRadar?.hasConflict ? (
-                <div className="p-5 rounded-3xl bg-rose-50 dark:bg-rose-950/40 border-2 border-rose-400 dark:border-rose-900/80 flex items-start gap-4 shadow-sm">
-                  <div className="p-3 rounded-2xl bg-rose-600 text-white shrink-0">
-                    <ShieldAlert className="w-7 h-7" />
+                <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/60 shadow-xs flex items-start gap-3.5">
+                  <div className="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center border border-rose-200 dark:border-rose-900/60 shrink-0 mt-0.5">
+                    <ShieldAlert className="w-4 h-4" />
                   </div>
                   <div className="flex-1 space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-rose-600 text-white">
-                        CRITICAL CONTRADICTION RADAR INTERLOCK
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-rose-100/80 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border border-rose-200 dark:border-rose-800">
+                        Contradiction Interlock
                       </span>
-                      <span className="text-xs font-bold text-rose-900 dark:text-rose-200">
-                        Fatal Drug-Allergy Interaction Blocked!
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">
+                        Fatal Drug-Allergy Interaction Blocked
                       </span>
                     </div>
 
-                    <p className="text-xs text-rose-800 dark:text-rose-300">
+                    <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-normal">
                       {aiResult.step5ContradictionRadar.clinicalHazard}
                     </p>
 
                     <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                      <span className="text-[11px] font-bold text-rose-900 dark:text-rose-200 mr-1">Hard-Blocked:</span>
+                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 mr-1">Hard-Blocked:</span>
                       {aiResult.step5ContradictionRadar.blockedDrugs?.map((drug, i) => (
-                        <span key={i} className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-rose-200 dark:bg-rose-900 text-rose-800 dark:text-rose-100">
-                          ✕ {drug}
+                        <span
+                          key={i}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono font-medium bg-slate-50 dark:bg-slate-800/80 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700"
+                        >
+                          <span className="text-rose-600 dark:text-rose-400 font-bold">✕</span>
+                          <span>{drug}</span>
                         </span>
                       ))}
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="p-4 rounded-3xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 flex items-center gap-3">
-                  <ShieldCheck className="w-6 h-6 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center border border-slate-200 dark:border-slate-700 shrink-0">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  </div>
                   <div>
-                    <span className="text-xs font-bold text-emerald-900 dark:text-emerald-200">
+                    <span className="text-xs font-semibold text-slate-900 dark:text-white">
                       Contradiction Radar Verified: No high-risk drug-disease or drug-allergy interactions detected.
                     </span>
-                    <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-0.5">
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                       {aiResult.step5ContradictionRadar?.clinicalHazard || 'All safe clinical thresholds satisfied for current encounter.'}
                     </p>
                   </div>
@@ -1538,98 +1552,103 @@ export const ClientPocDashboard: React.FC<ClientPocDashboardProps> = ({
 
               {/* 4. AI Safe Treatment Plan & Standards */}
               {aiResult.step5ContradictionRadar?.geminiRecommendation && (
-                <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 space-y-4">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-xs border border-slate-200 dark:border-slate-800 space-y-4">
                   <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
-                    <Sparkles className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                    <h3 className="text-base font-black text-slate-900 dark:text-white">
+                    <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center border border-slate-200 dark:border-slate-700">
+                      <Sparkles className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
+                    </div>
+                    <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
                       AI Recommended Safe Care Plan &amp; Treatment
                     </h3>
                   </div>
 
-                  <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                  <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-normal">
                     {aiResult.step5ContradictionRadar.geminiRecommendation.clinicalRationale}
                   </p>
 
                   {/* Suggested Prescriptions Grid */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                     {aiResult.step5ContradictionRadar.geminiRecommendation.suggestedPrescription?.map((rx: any, i: number) => (
-                      <div key={i} className="p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between">
+                      <div
+                        key={i}
+                        className="p-4 rounded-xl bg-slate-50/70 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 flex items-center justify-between"
+                      >
                         <div>
                           <div className="text-xs font-bold text-slate-900 dark:text-white">{rx.drugName || rx.drug}</div>
-                          <div className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium mt-0.5">
+                          <div className="text-[11px] text-slate-600 dark:text-slate-400 font-medium mt-0.5">
                             {rx.dosage || rx.dose} {rx.frequency || ''} {rx.duration ? `• ${rx.duration}` : ''}
                           </div>
                         </div>
-                        <span className="px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 shrink-0">
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shrink-0">
                           RxNorm: {rx.rxNormCode}
                         </span>
                       </div>
                     ))}
                   </div>
-
                 </div>
               )}
 
               {/* 5. Doctor Clinical Decision & EHR Database Commit */}
-              <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-100 dark:border-slate-800">
-                  <div>
-                    <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
-                      <Stethoscope className="w-5 h-5 text-blue-600" />
+              <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-xs border border-slate-200 dark:border-slate-800 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center border border-slate-200 dark:border-slate-700">
+                      <Stethoscope className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                    </div>
+                    <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
                       Doctor Decision &amp; EHR Database Commit
                     </h3>
-                   
                   </div>
 
                   <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                    <Lock className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Signing Physician: <strong className="text-slate-800 dark:text-slate-200">{doctorName}</strong></span>
+                    <Lock className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Signing Physician: <strong className="text-slate-800 dark:text-slate-200 font-semibold">{doctorName}</strong></span>
                   </div>
                 </div>
 
                 <div className="pt-2 space-y-4">
                   {/* Decision Tabs */}
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
                       Clinical Decision:
                     </label>
                     <div className="flex flex-wrap items-center gap-2">
                       <button
                         type="button"
                         onClick={() => setDoctorDecision('ACCEPT')}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 border ${
                           doctorDecision === 'ACCEPT'
-                            ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                            ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-slate-900 dark:border-white shadow-xs'
+                            : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50'
                         }`}
                       >
-                        <CheckCircle2 className="w-4 h-4" />
+                        <CheckCircle2 className="w-3.5 h-3.5" />
                         <span>Approve AI Recommendation</span>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => setDoctorDecision('MODIFY')}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 border ${
                           doctorDecision === 'MODIFY'
-                            ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                            ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-slate-900 dark:border-white shadow-xs'
+                            : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50'
                         }`}
                       >
-                        <Edit3 className="w-4 h-4" />
+                        <Edit3 className="w-3.5 h-3.5" />
                         <span>Modify / Add Custom Orders</span>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => setDoctorDecision('REJECT')}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 border ${
                           doctorDecision === 'REJECT'
-                            ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                            ? 'bg-rose-700 text-white border-rose-700 shadow-xs'
+                            : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50'
                         }`}
                       >
-                        <ShieldAlert className="w-4 h-4" />
+                        <ShieldAlert className="w-3.5 h-3.5" />
                         <span>Reject / Defer Treatment</span>
                       </button>
                     </div>
@@ -1637,7 +1656,7 @@ export const ClientPocDashboard: React.FC<ClientPocDashboardProps> = ({
 
                   {/* Prescription Field */}
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       Final Prescription to be Committed:
                     </label>
                     <input
@@ -1645,13 +1664,13 @@ export const ClientPocDashboard: React.FC<ClientPocDashboardProps> = ({
                       value={customPrescription}
                       onChange={e => setCustomPrescription(e.target.value)}
                       placeholder="e.g. Azithromycin 500mg OD x 3 days, Paracetamol 650mg QDS PRN"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-sans"
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 font-sans"
                     />
                   </div>
 
                   {/* Doctor Clinical Notes */}
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       Doctor Clinical Sign-Off Notes:
                     </label>
                     <textarea
@@ -1659,28 +1678,26 @@ export const ClientPocDashboard: React.FC<ClientPocDashboardProps> = ({
                       value={doctorNotes}
                       onChange={e => setDoctorNotes(e.target.value)}
                       placeholder="Enter official physician reasoning for medical record..."
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-sans"
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 font-sans leading-relaxed"
                     />
                   </div>
 
                   {/* Commit Action Button */}
                   <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    
-
                     <button
                       onClick={handleCommitToDatabase}
                       disabled={isSavingDecision}
-                      className="px-6 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 transition-all cursor-pointer disabled:opacity-50"
+                      className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer disabled:opacity-50"
                     >
                       {isSavingDecision ? (
                         <>
-                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                           <span>Committing to Patient Database...</span>
                         </>
                       ) : (
                         <>
-                          <Database className="w-4 h-4" />
-                          <span>💾 Approve &amp; Update Patient Database</span>
+                          <Database className="w-3.5 h-3.5" />
+                          <span>Approve &amp; Update Patient Database</span>
                         </>
                       )}
                     </button>
@@ -1688,20 +1705,20 @@ export const ClientPocDashboard: React.FC<ClientPocDashboardProps> = ({
 
                   {/* Success Confirmation Card */}
                   {commitSuccess && (
-                    <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 space-y-2 animate-fadeIn">
+                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-2 animate-fadeIn">
                       <div className="flex items-center gap-2">
-                        <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                        <span className="text-xs font-bold text-emerald-900 dark:text-emerald-200">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <span className="text-xs font-bold text-slate-900 dark:text-white">
                           {commitSuccess.message}
                         </span>
                       </div>
-                      <div className="flex flex-wrap items-center gap-4 text-[10px] text-emerald-800 dark:text-emerald-300 font-mono">
-                        <span>Signature Hash: <strong>{commitSuccess.signature}</strong></span>
+                      <div className="flex flex-wrap items-center gap-3 text-[10px] text-slate-500 font-mono">
+                        <span>Signature Hash: <strong className="text-slate-700 dark:text-slate-300">{commitSuccess.signature}</strong></span>
                         <span>•</span>
-                        <span>Sealed At: <strong>{new Date(commitSuccess.timestamp).toLocaleString()}</strong></span>
+                        <span>Sealed At: <strong className="text-slate-700 dark:text-slate-300">{new Date(commitSuccess.timestamp).toLocaleString()}</strong></span>
                       </div>
-                      <p className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-1">
-                        ✓ Patient record updated in live database. Switch to the <strong>Patient Medical Records</strong> tab to view this consultation!
+                      <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
+                        Patient record updated in live database. Switch to the <strong>Patient Medical Records</strong> tab to view this consultation.
                       </p>
                     </div>
                   )}

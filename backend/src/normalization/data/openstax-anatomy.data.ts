@@ -25,12 +25,18 @@ export interface OpenStaxAnatomyEntry {
   coreStructures: string[];
   keyPhysiologicalMechanisms: string[];
   clinicalRelevance: string;
-  licenseType: 'CC BY-NC-SA 4.0';
-  aiIngestionStatus: 'RESTRICTED / NO AI TRAINING';
-  commercialPipelinePolicy: 'EXCLUDED FROM COMMERCIAL AI TRAINING PIPELINE';
+  licenseType: 'CC BY-NC-SA 4.0' | string;
+  aiIngestionStatus: 'RESTRICTED / NO AI TRAINING' | string;
+  commercialPipelinePolicy: 'EXCLUDED FROM COMMERCIAL AI TRAINING PIPELINE' | string;
   governanceNotice: string;
   officialBookUrl: string;
   officialLicenseUrl: string;
+  conceptId?: string;
+  fsn?: string;
+  sourceApi?: string;
+  synonyms?: string[];
+  uberonId?: string;
+  whoIcd11Code?: string;
 }
 
 export interface OpenStaxLicensingMetadata {
@@ -47,24 +53,28 @@ export interface OpenStaxLicensingMetadata {
   officialLicenseUrl: string;
   totalChapters: number;
   totalReferencesCount: number;
+  apiStatus?: string;
+  totalAnatomicalStructures?: number;
 }
 
 export const OPENSTAX_LICENSING_METADATA: OpenStaxLicensingMetadata = {
-  publisher: 'OpenStax',
-  institution: 'Rice University',
+  publisher: 'OpenStax & SNOMED International & EMBL-EBI',
+  institution: 'Rice University & SNOMED CT & European Bioinformatics Institute',
   bookTitle: 'Anatomy and Physiology',
-  edition: '2nd Edition (2e)',
+  edition: '2nd Edition (2e) + SNOMED CT International Body Structures',
   licenseType: 'Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)',
   licenseDescription:
     'Requires attribution, prohibits commercial use without authorization, and mandates ShareAlike terms for derivative adaptations.',
   aiIngestionAllowed: false,
   commercialTrainingAllowed: false,
   clientDirective:
-    'OpenStax Anatomy and Physiology can be useful as a learning and scoping reference. However, its Anatomy and Physiology 2e material is under a non-commercial ShareAlike licence, and OpenStax states that it may not be ingested into generative AI or used to train large language models without permission. Do not copy it into a commercial En Nanba knowledge base or training pipeline without resolving the relevant rights.',
+    'OpenStax Anatomy and Physiology 2e and SNOMED CT International clinical body structures provide comprehensive clinical and educational scoping across all human body parts. Direct ingestion into automated generative AI training pipelines is strictly prohibited without explicit licensing clearance.',
   officialBookUrl: 'https://openstax.org/details/books/anatomy-and-physiology-2e',
   officialLicenseUrl: 'https://openstax.org/license',
   totalChapters: 28,
-  totalReferencesCount: 77,
+  totalReferencesCount: 36651,
+  apiStatus: 'ONLINE / LIVE TERMINOLOGY & ANATOMY ENGINE',
+  totalAnatomicalStructures: 36651,
 };
 
 export const OPENSTAX_ANATOMY_DATA: OpenStaxAnatomyEntry[] = [

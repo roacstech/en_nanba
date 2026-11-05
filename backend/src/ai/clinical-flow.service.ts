@@ -68,7 +68,7 @@ export class ClinicalFlowService {
     // STEP 2: AI CHECKS RAW TEXT (CLINICAL NLP WITH GEMINI)
     // Extracts entities into clinical buckets: Disease, Medication, Allergy, Lab Test, Symptom
     // =========================================================================
-    const buckets = await this.extractClinicalBucketsWithAi(rawText);
+    const buckets = await this.extractClinicalBucketsWithAi(rawText, patient);
 
     const step2 = {
       disease: buckets.disease,
@@ -313,17 +313,29 @@ export class ClinicalFlowService {
     const hasValidAllergy = step2.allergy && !step2.allergy.toLowerCase().includes('none') && !step2.allergy.toLowerCase().includes('null');
     const hasValidMed = step2.medication && !step2.medication.toLowerCase().includes('none');
 
+    const chronicList = (patient?.chronicConditions && patient.chronicConditions.length > 0)
+      ? patient.chronicConditions
+      : (hasValidDisease ? [step2.disease] : []);
+
+    const medsList = (patient?.currentMedications && patient.currentMedications.length > 0)
+      ? patient.currentMedications
+      : (hasValidMed ? [step2.medication] : []);
+
+    const allergiesList = (patient?.allergies && patient.allergies.length > 0)
+      ? patient.allergies.filter(a => a && !a.toLowerCase().startsWith('null') && !a.toLowerCase().startsWith('none'))
+      : (hasValidAllergy ? [step2.allergy] : []);
+
     const historyParts: string[] = [];
-    if (hasValidDisease) {
-      historyParts.push(`documented ${step2.disease} [ICD-11: ${step3.icd11?.officialCode || 'Standard'}]`);
+    if (chronicList.length > 0) {
+      historyParts.push(`documented ${chronicList.join(', ')} [ICD-11: ${step3.icd11?.officialCode || 'Standard'}]`);
     } else {
       historyParts.push('no documented chronic diseases');
     }
-    if (hasValidMed) {
-      historyParts.push(`actively maintained on ${step2.medication} [RxNorm: ${step3.rxNormMedication?.officialCode || 'Standard'}]`);
+    if (medsList.length > 0) {
+      historyParts.push(`actively maintained on ${medsList.join(', ')} [RxNorm: ${step3.rxNormMedication?.officialCode || 'Standard'}]`);
     }
-    if (hasValidAllergy) {
-      historyParts.push(`documented hypersensitivity to ${step2.allergy} [RxNorm: ${step3.rxNormAllergy?.officialCode || 'Standard'}]`);
+    if (allergiesList.length > 0) {
+      historyParts.push(`documented hypersensitivity to ${allergiesList.join(', ')} [RxNorm: ${step3.rxNormAllergy?.officialCode || 'Standard'}]`);
     } else {
       historyParts.push('no known drug allergies (NKDA)');
     }
@@ -447,7 +459,10 @@ export class ClinicalFlowService {
   // Private Helpers
   // =========================================================================
 
-  private async extractClinicalBucketsWithAi(text: string): Promise<ClinicalEntityBucket> {
+  private async extractClinicalBucketsWithAi(
+    text: string,
+    patient?: PatientProfile | null,
+  ): Promise<ClinicalEntityBucket> {
     const systemPrompt = `You are a clinical NLP entity extraction engine.
 Given a clinical narrative, extract the key clinical entities into exactly 5 buckets:
 1. disease: the chronic or diagnosed condition (e.g. "Type 2 Diabetes")
@@ -479,21 +494,26 @@ Do NOT include markdown formatting or extra text.`;
       }
     }
 
-    // Deterministic Rule Extraction Fallback
-    const isPooja = text.toLowerCase().includes('pooja') || text.includes('P-1006') || text.toLowerCase().includes('asthma');
+    // Deterministic Rule Extraction using patient context and narrative
+    const diseaseMatch = text.match(/(?:Bronchial\s*Asthma|Asthma|Allergic\s*Rhinitis|Type\s*2\s*Diabetes(?:\s*mellitus)?|Diabetes|Hypertension|Angina|Dyslipidemia|Neuropathy|Kidney\s*Disease|Migraine)/i);
+    const medMatch = text.match(/(?:Salbutamol(?:\s*\d+\s*(?:mcg|mg))?(?:\s*inhaler)?|Metformin(?:\s*\d+\s*mg)?|Amlodipine(?:\s*\d+\s*mg)?|Telmisartan(?:\s*\d+\s*mg)?|Atorvastatin(?:\s*\d+\s*mg)?|Budesonide(?:\s*inhaler)?|Montelukast(?:\s*\d+\s*mg)?|Pregabalin(?:\s*\d+\s*mg)?|Glimepiride(?:\s*\d+\s*mg)?|Sildenafil(?:\s*\d+\s*mg)?|Cetirizine(?:\s*\d+\s*mg)?)/i);
+    const allergyMatch = text.match(/(?:allergic to\s*([a-zA-Z\s,]+?)(?:\s*,|\s*\.|\s*HbA1c|\s*Peak|\s*Current|\s*$)|allerg(?:y|ies):\s*([a-zA-Z\s,()]+?)(?:\.|\n|$)|([a-zA-Z]+)\s*allergy)/i);
+    const labMatch = text.match(/(?:Peak\s*Flow\s*[\d.]+\s*L\/min|HbA1c\s*[\d.]+%?|Blood sugar\s*[\d.]+|Blood\s*Glucose\s*[\d.]+\s*(?:mg\/dL)?|Creatinine\s*[\d.]+)/i);
+    const symptomMatch = text.match(/(?:Fever\s*[\d.]*°?[FC]?(?:\s*with\s*[^,]+)?|Severe\s*joint\s*pain|Chest\s*pain|Cough|Shortness\s*of\s*breath|Throat\s*irritation|Headache)/i);
 
-    const diseaseMatch = text.match(/(?:Bronchial\s*Asthma|Asthma|Allergic\s*Rhinitis|Type\s*2\s*Diabetes(?:\s*mellitus)?|Diabetes|Hypertension|Angina)/i);
-    const medMatch = text.match(/(?:Salbutamol(?:\s*\d+\s*(?:mcg|mg))?(?:\s*inhaler)?|Metformin(?:\s*\d+\s*mg)?|Amlodipine(?:\s*\d+\s*mg)?|Lisinopril|Atorvastatin|Sildenafil)/i);
-    const allergyMatch = text.match(/(?:allergic to\s*([a-zA-Z\s,]+?)(?:\s*,|\s*\.|\s*HbA1c|\s*Peak|\s*$)|allergy:\s*([a-zA-Z\s,]+)|([a-zA-Z]+)\s*allergy)/i);
-    const labMatch = text.match(/(?:Peak\s*Flow\s*[\d.]+\s*L\/min|HbA1c\s*[\d.]+%?|Blood sugar\s*[\d.]+|Creatinine\s*[\d.]+)/i);
-    const symptomMatch = text.match(/(?:Fever\s*[\d.]*°?[FC]?(?:\s*with\s*[^,]+)?|Severe\s*joint\s*pain|Chest\s*pain|Cough|Shortness\s*of\s*breath)/i);
+    const defaultDisease = patient?.chronicConditions && patient.chronicConditions.length > 0 ? patient.chronicConditions[0] : 'None';
+    const defaultMed = patient?.currentMedications && patient.currentMedications.length > 0 ? patient.currentMedications[0] : 'None';
+    const validAllergies = patient?.allergies?.filter(a => a && !a.toLowerCase().startsWith('null') && !a.toLowerCase().startsWith('none') && a.trim() !== '') || [];
+    const defaultAllergy = validAllergies.length > 0 ? validAllergies[0] : 'None';
+    const defaultLab = patient?.vitals?.bloodGlucose ? `Blood Glucose ${patient.vitals.bloodGlucose}` : 'Baseline evaluation';
+    const defaultSymptom = symptomMatch ? symptomMatch[0].trim() : 'Acute clinical evaluation';
 
     return {
-      disease: diseaseMatch ? diseaseMatch[0].trim() : isPooja ? 'Bronchial Asthma' : 'None',
-      medication: medMatch ? medMatch[0].trim() : isPooja ? 'Salbutamol 100mcg inhaler' : 'None',
-      allergy: allergyMatch ? (allergyMatch[1] || allergyMatch[2] || allergyMatch[3] || (isPooja ? 'Aspirin and Ibuprofen' : 'None')).trim() : isPooja ? 'Aspirin and Ibuprofen' : 'None',
-      labTest: labMatch ? labMatch[0].trim() : isPooja ? 'Peak Flow 380 L/min' : 'None',
-      symptom: symptomMatch ? symptomMatch[0].trim() : isPooja ? 'Fever 101°F' : 'None',
+      disease: diseaseMatch ? diseaseMatch[0].trim() : defaultDisease,
+      medication: medMatch ? medMatch[0].trim() : defaultMed,
+      allergy: allergyMatch ? (allergyMatch[1] || allergyMatch[2] || allergyMatch[3] || defaultAllergy).trim() : defaultAllergy,
+      labTest: labMatch ? labMatch[0].trim() : defaultLab,
+      symptom: defaultSymptom,
     };
   }
 

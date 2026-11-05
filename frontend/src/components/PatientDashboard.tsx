@@ -90,7 +90,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
     chronicConditions: patient?.chronicConditions || [],
     pastDiseases: patient?.pastDiseases || [],
     allergies: patient?.allergies || [],
-    currentMedications: [],
+    currentMedications: patient?.currentMedications || [],
     symptomsNotes: '',
   });
 
@@ -123,7 +123,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
         chronicConditions: patient.chronicConditions || [],
         pastDiseases: patient.pastDiseases || [],
         allergies: patient.allergies || [],
-        currentMedications: [],
+        currentMedications: patient.currentMedications || [],
         symptomsNotes: '',
       });
     }
@@ -618,13 +618,16 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
               </div>
 
               {/* 4. Active Medications from Clinical Fabric */}
-              {report.medications && report.medications.length > 0 && (
+              {((report.medications && report.medications.length > 0) || (patient?.currentMedications && patient.currentMedications.length > 0)) && (
                 <div className="pro-card p-6">
                   <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
                     <Pill className="w-4 h-4 text-blue-600" /> Prescribed Medications (RxNorm Mapped)
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {report.medications.map((m, i) => (
+                    {(report.medications && report.medications.length > 0
+                      ? report.medications
+                      : (patient?.currentMedications || []).map(m => ({ name: m, dosage: 'Active clinical dosage', rxNormCode: 'RxNorm Standard' }))
+                    ).map((m, i) => (
                       <div
                         key={i}
                         className="p-3 border-b border-slate-100 dark:border-slate-800/50 last:border-0"

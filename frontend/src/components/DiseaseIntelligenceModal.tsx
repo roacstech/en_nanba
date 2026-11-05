@@ -72,7 +72,7 @@ export const DiseaseIntelligenceModal: React.FC<DiseaseIntelligenceModalProps> =
   const synonymsList = Array.from(new Set([
     ...(liveDetails?.synonyms || []),
     ...(disease.synonyms || [])
-  ])).filter(s => s && s.toLowerCase() !== disease.display.toLowerCase()).slice(0, 10);
+  ])).filter(s => s && s.toLowerCase() !== disease.display.toLowerCase()).slice(0, 20);
 
   // Inclusions from WHO API
   const inclusionsList = liveDetails?.inclusions || [];
@@ -105,7 +105,7 @@ export const DiseaseIntelligenceModal: React.FC<DiseaseIntelligenceModalProps> =
           <div className="flex items-center gap-2 flex-wrap">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-600 text-white shadow-xs">
               <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-              WHO ICD-11 MMS (2026 Edition)
+              WHO ICD-11 MMS (2024 Edition)
             </span>
 
             {/* Entity Classification Badge */}

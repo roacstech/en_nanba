@@ -306,7 +306,7 @@ export default function DoctorWorkspacePage() {
                         { id: 'niddk', title: 'Disease explanations & symptoms', value: 'NIDDK & Authoritative resources' },
                         { id: 'nice', title: 'Reviewed pathways & recommendations', value: 'NICE & guideline publishers' },
                         { id: 'loinc', title: 'Laboratory & clinical observations', value: 'LOINC' },
-                        { id: 'anatomy', title: 'Anatomy & physiology references', value: 'OpenStax A&P 2e' },
+                        { id: 'anatomy', title: 'Anatomy & physiology references', value: '36,651 Body Structures • OpenStax A&P 2e' },
                         { id: 'ucum', title: 'Units', value: 'UCUM' },
                         { id: 'atc', title: 'Medicines', value: 'ATC + appropriate drug terminology' },
                         { id: 'dicom', title: 'Medical imaging', value: 'DICOM' },

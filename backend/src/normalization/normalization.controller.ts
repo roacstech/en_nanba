@@ -190,7 +190,23 @@ export class NormalizationController {
     @Query('query') query?: string,
     @Query('system') system?: string,
   ) {
-    return this.externalTerminologies.getOpenStaxAnatomyReferences({
+    return await this.externalTerminologies.getOpenStaxAnatomyReferences({
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 50,
+      query: q || query,
+      system,
+    });
+  }
+
+  @Get('anatomy/catalog')
+  async getAnatomyCatalog(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('q') q?: string,
+    @Query('query') query?: string,
+    @Query('system') system?: string,
+  ) {
+    return await this.externalTerminologies.getOpenStaxAnatomyReferences({
       page: page ? parseInt(page, 10) : 1,
       limit: limit ? parseInt(limit, 10) : 50,
       query: q || query,
@@ -200,7 +216,16 @@ export class NormalizationController {
 
   @Get('normalize/openstax/reference-details')
   async getOpenStaxAnatomyDetails(@Query('code') code: string, @Query('id') id?: string) {
-    const details = this.externalTerminologies.getOpenStaxAnatomyDetails(code || id || '');
+    const details = await this.externalTerminologies.getOpenStaxAnatomyDetails(code || id || '');
+    return {
+      success: !!details,
+      data: details,
+    };
+  }
+
+  @Get('anatomy/details')
+  async getAnatomyDetails(@Query('code') code: string, @Query('id') id?: string) {
+    const details = await this.externalTerminologies.getOpenStaxAnatomyDetails(code || id || '');
     return {
       success: !!details,
       data: details,

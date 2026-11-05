@@ -195,7 +195,7 @@ export const Icd11DiseaseCatalog: React.FC = () => {
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search 17,000+ diseases by code (e.g. 5A11, BA00, 1A00), name, category, or symptoms..."
+                placeholder="Search 34,000+ official WHO diseases by code (e.g. 5A11, BA00, 1A00), name, category, or symptoms..."
                 className="w-full pl-10 pr-10 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
               />
               {searchQuery && (
@@ -385,7 +385,7 @@ export const Icd11DiseaseCatalog: React.FC = () => {
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-950/60">
                   <th className="py-3.5 px-4 w-36 text-center">ICD-11 Code</th>
-                  <th className="py-3.5 px-4 min-w-[240px] text-center">Disease / Entity Title</th>
+                  <th className="py-3.5 px-4 min-w-[260px] text-left">Disease / Entity Title & Clinical Synonyms</th>
                   <th className="py-3.5 px-4 w-24 text-center">System</th>
                   <th className="py-3.5 px-4 w-36 text-center">Entity Type</th>
                   <th className="py-3.5 px-4 w-20 text-center">Ch #</th>
@@ -440,11 +440,28 @@ export const Icd11DiseaseCatalog: React.FC = () => {
                         )}
                       </td>
 
-                      {/* Display / Title */}
-                      <td className="py-3.5 px-4 align-middle text-center">
-                        <div className="font-bold text-slate-900 dark:text-white text-sm leading-snug text-center">
+                      {/* Display / Title & Synonyms */}
+                      <td className="py-3.5 px-4 align-middle text-left">
+                        <div className="font-bold text-slate-900 dark:text-white text-sm leading-snug">
                           {d.display}
                         </div>
+                        {d.synonyms && d.synonyms.length > 0 && (
+                          <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                            {d.synonyms.slice(0, 3).map((syn, sIdx) => (
+                              <span
+                                key={sIdx}
+                                className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-900/40"
+                              >
+                                {syn}
+                              </span>
+                            ))}
+                            {d.synonyms.length > 3 && (
+                              <span className="text-[10px] font-medium text-slate-400">
+                                +{d.synonyms.length - 3} more
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </td>
 
                       {/* System */}

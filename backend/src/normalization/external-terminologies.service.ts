@@ -249,6 +249,7 @@ export class ExternalTerminologiesService implements OnModuleDestroy {
     try {
       const candidates = [
         path.resolve(__dirname, 'data/SimpleTabulation-ICD-11-MMS-en.txt'),
+        path.resolve(__dirname, 'data/normalization/data/SimpleTabulation-ICD-11-MMS-en.txt'),
         path.resolve(process.cwd(), 'src/normalization/data/SimpleTabulation-ICD-11-MMS-en.txt'),
         path.resolve(process.cwd(), 'dist/normalization/data/SimpleTabulation-ICD-11-MMS-en.txt'),
         path.resolve(process.cwd(), 'backend/src/normalization/data/SimpleTabulation-ICD-11-MMS-en.txt'),
@@ -262,16 +263,16 @@ export class ExternalTerminologiesService implements OnModuleDestroy {
           const line = lines[i];
           if (!line) continue;
           const cols = line.split('\t');
-          const foundationUri = cols[0]?.trim();
+          const foundationUri = cols[0]?.trim() || cols[1]?.trim();
           const code = cols[2]?.trim();
           const title = cols[4]?.trim() || '';
           const chapterNo = cols[8]?.trim() || '';
           if (code && foundationUri) {
             const entityId = foundationUri.split('/').pop() || '';
-            const cleanTitle = title.replace(/^[\s\-]+/, '').replace(/^"+|"+$/g, '').trim();
+            const cleanTitle = title.replace(/^"+|"+$/g, '').replace(/^[\s\-]+/, '').trim();
             this.foundationMap.set(code.toLowerCase(), {
               foundationUri,
-              browserUrl: `https://icd.who.int/browse/2026-01/mms/en#${entityId}`,
+              browserUrl: `https://icd.who.int/browse/2024-01/mms/en#${entityId}`,
               title: cleanTitle,
               chapterNo,
             });
@@ -426,27 +427,41 @@ export class ExternalTerminologiesService implements OnModuleDestroy {
 
     const local = this.foundationMap.get(cacheKey) || this.foundationMap.get((matched?.code || '').toLowerCase());
     let stemUri = local?.foundationUri ? local.foundationUri.replace('http://', 'https://') : null;
-    let browserUrl = local?.browserUrl || matched?.browserUrl || `https://icd.who.int/browse/2026-01/mms/en#${raw}`;
+    let browserUrl = local?.browserUrl || matched?.browserUrl || `https://icd.who.int/browse/2024-01/mms/en#${raw}`;
     let title = matched?.display || local?.title || raw;
     let definition = matched?.description || '';
     let diagnosticCriteria: string | undefined = undefined;
     let inclusions: string[] = [];
-    let synonyms: string[] = matched?.synonyms || [];
+    const synonymsSet = new Set<string>();
+
+    if (matched?.synonyms && Array.isArray(matched.synonyms)) {
+      for (const s of matched.synonyms) {
+        if (s) synonymsSet.add(s);
+      }
+    }
+
+    let liveRelatedDisorders: Array<{ code?: string; title: string; relationship: 'parent' | 'subtype' | 'associated' }> = [];
+    let liveRelatedConcepts: Array<{ label: string; value: string; category: string }> = [];
     let provenance: 'WHO_ICD_API_LIVE' | 'WHO_ICD_FOUNDATION_TABULATION' = 'WHO_ICD_FOUNDATION_TABULATION';
 
     const token = await this.getWhoAccessToken();
     if (token) {
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/json',
+        'API-Version': 'v2',
+        'Accept-Language': 'en',
+      };
+
       try {
         let mmsEntityUri: string | null = null;
+        let foundationEntityUri: string | null = null;
+
+        // 1. Resolve via WHO codeinfo
         if (!raw.startsWith('http')) {
-          const codeRes = await fetch(`https://id.who.int/icd/release/11/2026-01/mms/codeinfo/${encodeURIComponent(raw)}`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              Accept: 'application/json',
-              'API-Version': 'v2',
-              'Accept-Language': 'en',
-            },
-            signal: AbortSignal.timeout(4000),
+          const codeRes = await fetch(`https://id.who.int/icd/release/11/2024-01/mms/codeinfo/${encodeURIComponent(raw)}`, {
+            headers,
+            signal: AbortSignal.timeout(5000),
           });
           if (codeRes.ok) {
             const codeData = await codeRes.json();
@@ -456,19 +471,38 @@ export class ExternalTerminologiesService implements OnModuleDestroy {
           }
         }
 
+        // 2. If codeinfo didn't resolve stemId, search on WHO MMS API
+        if (!mmsEntityUri && !raw.startsWith('http')) {
+          const searchRes = await fetch(`https://id.who.int/icd/release/11/2024-01/mms/search?q=${encodeURIComponent(raw)}`, {
+            headers,
+            signal: AbortSignal.timeout(5000),
+          });
+          if (searchRes.ok) {
+            const searchData = await searchRes.json();
+            const top = searchData.destinationEntities?.[0];
+            if (top?.stemId || top?.id) {
+              mmsEntityUri = (top.stemId || top.id).replace('http://', 'https://');
+            }
+            if (top?.matchingPVs) {
+              for (const pv of top.matchingPVs) {
+                const cleanLabel = (pv.label || '').replace(/<[^>]*>?/gm, '').trim();
+                if (cleanLabel && cleanLabel.toLowerCase() !== title.toLowerCase()) {
+                  synonymsSet.add(cleanLabel);
+                }
+              }
+            }
+          }
+        }
+
         const targetUri = mmsEntityUri || (raw.startsWith('http') ? raw.replace('http://', 'https://') : stemUri);
         if (targetUri) {
           const entityRes = await fetch(targetUri, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              Accept: 'application/json',
-              'API-Version': 'v2',
-              'Accept-Language': 'en',
-            },
-            signal: AbortSignal.timeout(4000),
+            headers,
+            signal: AbortSignal.timeout(6000),
           });
 
           if (entityRes.ok) {
+            provenance = 'WHO_ICD_API_LIVE';
             const entity = await entityRes.json();
             title = entity.title?.['@value'] || title;
             if (entity.definition?.['@value']) {
@@ -476,18 +510,178 @@ export class ExternalTerminologiesService implements OnModuleDestroy {
             }
             diagnosticCriteria = entity.diagnosticCriteria?.['@value'];
             browserUrl = entity.browserUrl || browserUrl;
+
+            // Inclusions from MMS
             if (entity.inclusion && Array.isArray(entity.inclusion)) {
-              inclusions = entity.inclusion.map((i: any) => i.label?.['@value']).filter(Boolean);
+              for (const item of entity.inclusion) {
+                const v = item.label?.['@value'];
+                if (v) {
+                  inclusions.push(v);
+                  if (v.toLowerCase() !== title.toLowerCase()) synonymsSet.add(v);
+                }
+              }
             }
+
+            // MMS Index terms (Synonyms)
             if (entity.indexTerm && Array.isArray(entity.indexTerm)) {
-              const liveSynonyms = entity.indexTerm.map((i: any) => i.label?.['@value']).filter(Boolean).slice(0, 10);
-              synonyms = Array.from(new Set([...synonyms, ...liveSynonyms]));
+              for (const item of entity.indexTerm) {
+                const v = item.label?.['@value'];
+                if (v && v.toLowerCase() !== title.toLowerCase()) synonymsSet.add(v);
+              }
             }
-            provenance = 'WHO_ICD_API_LIVE';
+
+            // MMS Synonyms
+            if (entity.synonym && Array.isArray(entity.synonym)) {
+              for (const item of entity.synonym) {
+                const v = item.label?.['@value'];
+                if (v && v.toLowerCase() !== title.toLowerCase()) synonymsSet.add(v);
+              }
+            }
+
+            // Real WHO parents
+            if (entity.parent && Array.isArray(entity.parent)) {
+              for (const pUri of entity.parent) {
+                const pId = pUri.split('/').pop() || '';
+                const pMatch: any = this.fullIcd11Diseases.find(d => d.foundationUri?.includes(pId) || d.code.toLowerCase() === pId.toLowerCase()) || this.foundationMap.get(pId.toLowerCase());
+                liveRelatedDisorders.push({
+                  title: pMatch?.display || pMatch?.title || 'WHO Classification Parent Entity',
+                  relationship: 'parent',
+                });
+              }
+            }
+
+            // Real WHO children / subtypes
+            if (entity.child && Array.isArray(entity.child)) {
+              for (const cUri of entity.child.slice(0, 6)) {
+                const cId = cUri.split('/').pop() || '';
+                const cMatch: any = this.fullIcd11Diseases.find(d => d.foundationUri?.includes(cId) || d.code.toLowerCase() === cId.toLowerCase()) || this.foundationMap.get(cId.toLowerCase());
+                if (cMatch?.display || cMatch?.title) {
+                  liveRelatedDisorders.push({
+                    title: cMatch.display || cMatch.title,
+                    relationship: 'subtype',
+                  });
+                }
+              }
+            }
+
+            // Real WHO index terms with foundationReference
+            if (entity.indexTerm && Array.isArray(entity.indexTerm)) {
+              const refs = entity.indexTerm.filter((it: any) => it.foundationReference).slice(0, 5);
+              for (const ref of refs) {
+                const label = ref.label?.['@value'];
+                if (label && !liveRelatedDisorders.some(d => d.title.toLowerCase() === label.toLowerCase())) {
+                  liveRelatedDisorders.push({
+                    title: label,
+                    relationship: 'associated',
+                  });
+                }
+              }
+            }
+
+            // Real WHO postcoordination scales
+            if (entity.postcoordinationScale && Array.isArray(entity.postcoordinationScale)) {
+              for (const ps of entity.postcoordinationScale.slice(0, 4)) {
+                const axis = ps.axisName?.split('/').pop() || 'Axis';
+                const count = ps.scaleEntity?.length || 0;
+                liveRelatedConcepts.push({
+                  label: `WHO Postcoordination (${axis})`,
+                  value: `${count} permissible clinical qualifiers defined in official WHO MMS schema`,
+                  category: 'WHO Axis',
+                });
+              }
+            }
+
+            if (entity.source) {
+              foundationEntityUri = entity.source.replace('http://', 'https://');
+            }
+          }
+        }
+
+        // 3. Query WHO Foundation Entity directly to retrieve all comprehensive Foundation synonyms!
+        const foundUri = foundationEntityUri || stemUri || (raw.startsWith('http') ? raw.replace('http://', 'https://') : `https://id.who.int/icd/entity/${raw}`);
+        if (foundUri && foundUri.includes('/icd/entity/')) {
+          try {
+            const fRes = await fetch(foundUri, {
+              headers,
+              signal: AbortSignal.timeout(4500),
+            });
+            if (fRes.ok) {
+              const fData = await fRes.json();
+              if (Array.isArray(fData.synonym)) {
+                for (const item of fData.synonym) {
+                  const v = item.label?.['@value'];
+                  if (v && v.toLowerCase() !== title.toLowerCase()) synonymsSet.add(v);
+                }
+              }
+              if (Array.isArray(fData.indexTerm)) {
+                for (const item of fData.indexTerm) {
+                  const v = item.label?.['@value'];
+                  if (v && v.toLowerCase() !== title.toLowerCase()) synonymsSet.add(v);
+                }
+              }
+              if (Array.isArray(fData.inclusion)) {
+                for (const item of fData.inclusion) {
+                  const v = item.label?.['@value'];
+                  if (v && v.toLowerCase() !== title.toLowerCase()) {
+                    inclusions.push(v);
+                    synonymsSet.add(v);
+                  }
+                }
+              }
+            }
+          } catch (e: any) {
+            // ignore
+          }
+        }
+
+        // 4. If synonyms still sparse (< 3), perform live search on WHO MMS to extract matching PV terms
+        if (synonymsSet.size < 3) {
+          try {
+            const sRes = await fetch(`https://id.who.int/icd/release/11/2024-01/mms/search?q=${encodeURIComponent(matched?.display || title || raw)}`, {
+              headers,
+              signal: AbortSignal.timeout(3500),
+            });
+            if (sRes.ok) {
+              const sData = await sRes.json();
+              const top = sData.destinationEntities?.[0];
+              if (top?.matchingPVs) {
+                for (const pv of top.matchingPVs) {
+                  const cleanLabel = (pv.label || '').replace(/<[^>]*>?/gm, '').trim();
+                  if (cleanLabel && cleanLabel.toLowerCase() !== title.toLowerCase()) {
+                    synonymsSet.add(cleanLabel);
+                  }
+                }
+              }
+            }
+          } catch (e: any) {
+            // ignore
           }
         }
       } catch (err: any) {
         this.logger.warn(`Live WHO API fetch warning for ${raw}: ${err.message}`);
+      }
+    }
+
+    // 5. Cross-reference SNOMED CT concepts in PostgreSQL for mapped synonyms
+    if (synonymsSet.size < 3 && this.isSnomedDbConnected && this.snomedPool) {
+      try {
+        const snomedRes = await this.snomedPool.query(
+          `SELECT preferred_term, fsn FROM snomed_concepts WHERE icd11_code ILIKE $1 OR preferred_term ILIKE $2 LIMIT 5`,
+          [raw, `%${title}%`]
+        );
+        for (const row of snomedRes.rows) {
+          if (row.preferred_term && row.preferred_term.toLowerCase() !== title.toLowerCase()) {
+            synonymsSet.add(row.preferred_term);
+          }
+          if (row.fsn) {
+            const cleanFsn = row.fsn.replace(/\s*\([^)]*\)$/, '').trim();
+            if (cleanFsn && cleanFsn.toLowerCase() !== title.toLowerCase()) {
+              synonymsSet.add(cleanFsn);
+            }
+          }
+        }
+      } catch (e: any) {
+        // ignore
       }
     }
 
@@ -501,10 +695,10 @@ export class ExternalTerminologiesService implements OnModuleDestroy {
 
     const foundationUri = local?.foundationUri || matched?.foundationUri || (raw.startsWith('http') ? raw : `http://id.who.int/icd/entity/${raw}`);
     const entityId = foundationUri.split('/').pop() || raw;
-    const mmsBrowserUrl = browserUrl || `https://icd.who.int/browse/2026-01/mms/en#${entityId}`;
-    const foundationBrowserUrl = `https://icd.who.int/browse/2026-01/foundation/en#${entityId}`;
+    const mmsBrowserUrl = browserUrl || `https://icd.who.int/browse/2024-01/mms/en#${entityId}`;
+    const foundationBrowserUrl = `https://icd.who.int/browse/2024-01/foundation/en#${entityId}`;
 
-    const mergedSynonyms = synonyms.filter(s => s && s.toLowerCase() !== title.toLowerCase()).slice(0, 10);
+    const mergedSynonyms = Array.from(synonymsSet).filter(s => s && s.toLowerCase() !== title.toLowerCase()).slice(0, 15);
 
     const result = {
       code: raw,
@@ -515,12 +709,12 @@ export class ExternalTerminologiesService implements OnModuleDestroy {
       synonyms: mergedSynonyms,
       symptoms,
       interventions: foundationEntities.interventions,
-      relatedDisorders: foundationEntities.relatedDisorders,
-      relatedConcepts: foundationEntities.relatedConcepts,
+      relatedDisorders: liveRelatedDisorders.length > 0 ? liveRelatedDisorders : foundationEntities.relatedDisorders,
+      relatedConcepts: liveRelatedConcepts.length > 0 ? liveRelatedConcepts : foundationEntities.relatedConcepts,
       browserUrl: mmsBrowserUrl,
       foundationBrowserUrl,
       foundationUri,
-      whoVersion: 'WHO ICD-11 MMS (2026 Edition)',
+      whoVersion: 'WHO ICD-11 MMS (2024 Edition)',
       provenance,
     };
 
@@ -532,6 +726,7 @@ export class ExternalTerminologiesService implements OnModuleDestroy {
     try {
       const candidates = [
         path.resolve(__dirname, 'data/icd11-full-diseases.json'),
+        path.resolve(__dirname, 'data/normalization/data/icd11-full-diseases.json'),
         path.resolve(process.cwd(), 'src/normalization/data/icd11-full-diseases.json'),
         path.resolve(process.cwd(), 'dist/normalization/data/icd11-full-diseases.json'),
         path.resolve(process.cwd(), 'backend/src/normalization/data/icd11-full-diseases.json'),
@@ -727,68 +922,104 @@ export class ExternalTerminologiesService implements OnModuleDestroy {
   // 4. ICD-11: WHO ICD-11 API / High-Precision Curated Index
   // =========================================================================
   async verifyIcd11(term: string): Promise<Icd11VerificationResult> {
-    const clientId = this.configService.get<string>('ICD11_CLIENT_ID');
-    const clientSecret = this.configService.get<string>('ICD11_CLIENT_SECRET');
+    const rawTerm = (term || '').trim();
+    if (!rawTerm) {
+      return {
+        term: '',
+        matched: false,
+        code: 'UNMAPPED',
+        display: 'Unmapped',
+        category: 'ICD-11',
+        source: 'WHO_API',
+      };
+    }
 
-    if (clientId && clientSecret) {
-      try {
-        const params = new URLSearchParams();
-        params.append('grant_type', 'client_credentials');
-        params.append('client_id', clientId);
-        params.append('client_secret', clientSecret);
-        params.append('scope', 'icdapi_access');
-
-        const tokenRes = await fetch('https://icdaccessmanagement.who.int/connect/token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: params.toString(),
-          signal: AbortSignal.timeout(5000),
-        });
-
-        if (tokenRes.ok) {
-          const tokenData = await tokenRes.json();
-          const token = tokenData.access_token;
-          const searchRes = await fetch(
-            `https://id.who.int/icd/entity/search?q=${encodeURIComponent(term)}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-                Accept: 'application/json',
-                'Accept-Language': 'en',
-                'API-Version': 'v2',
-              },
-              signal: AbortSignal.timeout(5000),
-            }
-          );
-          if (searchRes.ok) {
-            const searchData = await searchRes.json();
-            const entities: any[] = searchData.destinationEntities || [];
-            if (entities.length > 0) {
-              const topMatch = entities[0];
-              const cleanTitle = (topMatch.title || term).replace(/<[^>]*>?/gm, '');
-              const cleanCode = topMatch.theCode || topMatch.id?.split('/').pop() || 'WHO-MATCH';
-
-              const allMatches = entities.slice(0, 25).map((e: any) => ({
-                code: e.theCode || e.id?.split('/').pop() || 'WHO-MATCH',
-                display: (e.title || '').replace(/<[^>]*>?/gm, ''),
-              }));
-
-              return {
-                term,
-                matched: true,
-                code: cleanCode,
-                display: cleanTitle,
-                category: 'ICD-11 Official WHO Classification',
-                source: 'WHO_API',
-                totalFoundInWHO: entities.length,
-                allMatchingDiseases: allMatches,
-              };
+    try {
+      const token = await this.getWhoAccessToken();
+      if (token) {
+        // If term is code-like, check codeinfo first
+        if (!rawTerm.includes(' ') && rawTerm.length <= 10) {
+          const codeRes = await fetch(`https://id.who.int/icd/release/11/2024-01/mms/codeinfo/${encodeURIComponent(rawTerm.toUpperCase())}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: 'application/json',
+              'API-Version': 'v2',
+              'Accept-Language': 'en',
+            },
+            signal: AbortSignal.timeout(4000),
+          });
+          if (codeRes.ok) {
+            const codeData = await codeRes.json();
+            if (codeData.stemId) {
+              const entRes = await fetch(codeData.stemId.replace('http://', 'https://'), {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  Accept: 'application/json',
+                  'API-Version': 'v2',
+                  'Accept-Language': 'en',
+                },
+                signal: AbortSignal.timeout(4000),
+              });
+              if (entRes.ok) {
+                const ent = await entRes.json();
+                const cleanTitle = ent.title?.['@value'] || rawTerm;
+                return {
+                  term: rawTerm,
+                  matched: true,
+                  code: codeData.code || rawTerm.toUpperCase(),
+                  display: cleanTitle,
+                  category: `WHO MMS Official Classification (${ent.classKind || 'category'})`,
+                  source: 'WHO_API',
+                  totalFoundInWHO: 1,
+                  allMatchingDiseases: [{ code: codeData.code || rawTerm.toUpperCase(), display: cleanTitle }],
+                };
+              }
             }
           }
         }
-      } catch (err: any) {
-        this.logger.warn(`WHO ICD-11 API call failed: ${err.message}. Falling back to curated dictionary.`);
+
+        // Live search on WHO MMS API
+        const searchRes = await fetch(
+          `https://id.who.int/icd/release/11/2024-01/mms/search?q=${encodeURIComponent(rawTerm)}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: 'application/json',
+              'Accept-Language': 'en',
+              'API-Version': 'v2',
+            },
+            signal: AbortSignal.timeout(6000),
+          }
+        );
+
+        if (searchRes.ok) {
+          const searchData = await searchRes.json();
+          const entities: any[] = searchData.destinationEntities || [];
+          if (entities.length > 0) {
+            const topMatch = entities[0];
+            const cleanTitle = (topMatch.title || rawTerm).replace(/<[^>]*>?/gm, '');
+            const cleanCode = topMatch.theCode || topMatch.id?.split('/').pop() || 'WHO-MATCH';
+
+            const allMatches = entities.slice(0, 25).map((e: any) => ({
+              code: e.theCode || e.id?.split('/').pop() || 'WHO-MATCH',
+              display: (e.title || '').replace(/<[^>]*>?/gm, ''),
+            }));
+
+            return {
+              term: rawTerm,
+              matched: true,
+              code: cleanCode,
+              display: cleanTitle,
+              category: `Chapter ${topMatch.chapter || 'MMS'} - WHO ICD-11 Official API`,
+              source: 'WHO_API',
+              totalFoundInWHO: entities.length,
+              allMatchingDiseases: allMatches,
+            };
+          }
+        }
       }
+    } catch (err: any) {
+      this.logger.warn(`WHO ICD-11 live API search failed: ${err.message}. Checking local official index.`);
     }
 
     const q = term.toLowerCase();
@@ -912,11 +1143,155 @@ export class ExternalTerminologiesService implements OnModuleDestroy {
     const query = rawQuery.toLowerCase();
     const chapter = (options.chapter || '').trim().toLowerCase();
 
+    // 1. When a search query is provided, query the LIVE WHO ICD-11 MMS API directly
+    if (query) {
+      try {
+        const token = await this.getWhoAccessToken();
+        if (token) {
+          let entities: any[] = [];
+
+          // If query looks like a code (e.g. 5A11, 1A00, BA00), check WHO codeinfo first
+          if (!query.includes(' ') && query.length <= 10) {
+            const codeRes = await fetch(
+              `https://id.who.int/icd/release/11/2024-01/mms/codeinfo/${encodeURIComponent(rawQuery.toUpperCase())}`,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  Accept: 'application/json',
+                  'API-Version': 'v2',
+                  'Accept-Language': 'en',
+                },
+                signal: AbortSignal.timeout(5000),
+              }
+            );
+            if (codeRes.ok) {
+              const codeData = await codeRes.json();
+              if (codeData.stemId) {
+                const entRes = await fetch(codeData.stemId.replace('http://', 'https://'), {
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                    Accept: 'application/json',
+                    'API-Version': 'v2',
+                    'Accept-Language': 'en',
+                  },
+                  signal: AbortSignal.timeout(5000),
+                });
+                if (entRes.ok) {
+                  const ent = await entRes.json();
+                  entities.push({
+                    id: codeData.stemId,
+                    theCode: codeData.code || rawQuery.toUpperCase(),
+                    title: ent.title?.['@value'] || rawQuery,
+                    chapter: ent.classKind || 'WHO MMS Classification',
+                    isLeaf: true,
+                  });
+                }
+              }
+            }
+          }
+
+          // Search WHO MMS API directly
+          const searchRes = await fetch(
+            `https://id.who.int/icd/release/11/2024-01/mms/search?q=${encodeURIComponent(rawQuery)}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: 'application/json',
+                'Accept-Language': 'en',
+                'API-Version': 'v2',
+              },
+              signal: AbortSignal.timeout(6000),
+            }
+          );
+
+          if (searchRes.ok) {
+            const searchData = await searchRes.json();
+            const foundEntities = searchData.destinationEntities || [];
+            for (const fe of foundEntities) {
+              if (!entities.some(e => e.theCode === fe.theCode || e.id === fe.id)) {
+                entities.push(fe);
+              }
+            }
+          }
+
+          if (entities.length > 0) {
+            const apiData: Icd11DiseaseEntry[] = entities.map((e: any) => {
+              const cleanTitle = (e.title || '').replace(/<[^>]*>?/gm, '');
+              const cleanCode = e.theCode || e.id?.split('/').pop() || 'WHO-MATCH';
+              const entityId = (e.id || '').split('/').pop() || cleanCode;
+              const ch = e.chapter || '';
+              const chapterTitle = ch ? `Chapter ${ch} - WHO MMS Official Classification` : 'WHO ICD-11 MMS';
+
+              const synonymsSet = new Set<string>();
+              if (e.matchingPVs && Array.isArray(e.matchingPVs)) {
+                for (const pv of e.matchingPVs) {
+                  if (pv.propertyId !== 'Definition') {
+                    const cleanLabel = (pv.label || '').replace(/<[^>]*>?/gm, '').trim();
+                    if (cleanLabel && cleanLabel.toLowerCase() !== cleanTitle.toLowerCase()) {
+                      synonymsSet.add(cleanLabel);
+                    }
+                  }
+                }
+              }
+
+              // Check if we already have cached synonyms in this.whoEntityCache
+              const cached = this.whoEntityCache.get(cleanCode.toLowerCase());
+              if (cached?.synonyms) {
+                for (const s of cached.synonyms) {
+                  if (s && s.toLowerCase() !== cleanTitle.toLowerCase()) synonymsSet.add(s);
+                }
+              }
+
+              return {
+                code: cleanCode,
+                display: cleanTitle,
+                chapter: chapterTitle,
+                chapterNumber: ch,
+                category: 'Official WHO MMS Live API',
+                description: `WHO ICD-11 MMS official entity (${cleanTitle}). Code: ${cleanCode}.`,
+                system: 'ICD-11',
+                isLeaf: e.isLeaf === true,
+                foundationUri: e.id || `http://id.who.int/icd/entity/${cleanCode}`,
+                browserUrl: `https://icd.who.int/browse/2024-01/mms/en#${entityId}`,
+                synonyms: Array.from(synonymsSet).slice(0, 15),
+                whoVersion: 'WHO ICD-11 MMS (2024 Edition)',
+              };
+            });
+
+            let finalApiData = apiData;
+            if (chapter && chapter !== 'all') {
+              const cleanCh = chapter.replace(/^0+/, '');
+              finalApiData = finalApiData.filter(d => {
+                const itemCh = String(d.chapterNumber || '').replace(/^0+/, '').toLowerCase();
+                return itemCh === cleanCh || (d.chapter && d.chapter.toLowerCase().includes(chapter));
+              });
+            }
+
+            const paginatedApiData = finalApiData.slice((page - 1) * limit, page * limit);
+
+            return {
+              success: true,
+              total: finalApiData.length,
+              page,
+              limit,
+              totalPages: Math.ceil(finalApiData.length / limit) || 1,
+              query: options.query,
+              chapter: options.chapter,
+              count: paginatedApiData.length,
+              data: paginatedApiData,
+            };
+          }
+        }
+      } catch (err: any) {
+        this.logger.warn(`Live WHO search exception: ${err.message}. Serving from official WHO release index.`);
+      }
+    }
+
     let filtered = this.fullIcd11Diseases && this.fullIcd11Diseases.length > 0
       ? this.fullIcd11Diseases
       : ALL_ICD11_DISEASES;
 
-    // 1. Filter by WHO Chapter if specified
+    // Filter by WHO Chapter if specified
     if (chapter && chapter !== 'all') {
       const cleanCh = chapter.replace(/^0+/, '');
       filtered = filtered.filter(d => {
@@ -925,7 +1300,7 @@ export class ExternalTerminologiesService implements OnModuleDestroy {
       });
     }
 
-    // 2. Filter by search query (Code, Disease Title, Synonyms, Category, Chapter, Description)
+    // Filter by search query on official release tabulation
     if (query) {
       const qClean = query.trim();
       const qNoDot = qClean.replace(/\./g, '');
@@ -934,150 +1309,26 @@ export class ExternalTerminologiesService implements OnModuleDestroy {
         const code = (d.code || '').toLowerCase();
         const codeNoDot = code.replace(/\./g, '');
 
-        // Exact or prefix or substring code match (e.g. "1A00", "5A11", "BA40", "1a00.0")
         if (code === qClean || code.startsWith(qClean) || code.includes(qClean) || codeNoDot.includes(qNoDot)) {
           return true;
         }
-
-        // Title / Display match
         if (d.display && d.display.toLowerCase().includes(qClean)) {
           return true;
         }
-
-        // Synonyms match
         if (d.synonyms && d.synonyms.some(s => s && s.toLowerCase().includes(qClean))) {
           return true;
         }
-
-        // Category match
         if (d.category && d.category.toLowerCase().includes(qClean)) {
           return true;
         }
-
-        // Chapter match
         if (d.chapter && d.chapter.toLowerCase().includes(qClean)) {
           return true;
         }
-
-        // Description / Clinical scope match
         if (d.description && d.description.toLowerCase().includes(qClean)) {
           return true;
         }
-
         return false;
       });
-    }
-
-    // 3. Fallback to Live WHO ICD API only if local curated collection has 0 matches
-    if (filtered.length === 0 && query) {
-      const clientId = this.configService.get<string>('ICD11_CLIENT_ID');
-      const clientSecret = this.configService.get<string>('ICD11_CLIENT_SECRET');
-
-      if (clientId && clientSecret) {
-        try {
-          const token = await this.getWhoAccessToken();
-          if (token) {
-            let entities: any[] = [];
-
-            // If query looks like a code (single word, short alphanumeric), check WHO codeinfo
-            if (!query.includes(' ') && query.length <= 10) {
-              const codeRes = await fetch(`https://id.who.int/icd/release/11/2026-01/mms/codeinfo/${encodeURIComponent(rawQuery.toUpperCase())}`, {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  Accept: 'application/json',
-                  'API-Version': 'v2',
-                  'Accept-Language': 'en',
-                },
-                signal: AbortSignal.timeout(4000),
-              });
-              if (codeRes.ok) {
-                const codeData = await codeRes.json();
-                if (codeData.stemId) {
-                  const entRes = await fetch(codeData.stemId.replace('http://', 'https://'), {
-                    headers: {
-                      Authorization: `Bearer ${token}`,
-                      Accept: 'application/json',
-                      'API-Version': 'v2',
-                      'Accept-Language': 'en',
-                    },
-                    signal: AbortSignal.timeout(4000),
-                  });
-                  if (entRes.ok) {
-                    const ent = await entRes.json();
-                    entities.push({
-                      id: codeData.stemId,
-                      theCode: codeData.code || rawQuery.toUpperCase(),
-                      title: ent.title?.['@value'] || rawQuery,
-                      chapter: ent.classKind || 'WHO MMS Classification',
-                      isLeaf: true,
-                    });
-                  }
-                }
-              }
-            }
-
-            // Otherwise, search WHO MMS API
-            if (entities.length === 0) {
-              const searchRes = await fetch(
-                `https://id.who.int/icd/release/11/2026-01/mms/search?q=${encodeURIComponent(rawQuery)}`,
-                {
-                  headers: {
-                    Authorization: `Bearer ${token}`,
-                    Accept: 'application/json',
-                    'Accept-Language': 'en',
-                    'API-Version': 'v2',
-                  },
-                  signal: AbortSignal.timeout(6000),
-                }
-              );
-              if (searchRes.ok) {
-                const searchData = await searchRes.json();
-                entities = searchData.destinationEntities || [];
-              }
-            }
-
-            if (entities.length > 0) {
-              const apiData: Icd11DiseaseEntry[] = entities.map((e: any) => {
-                const cleanTitle = (e.title || '').replace(/<[^>]*>?/gm, '');
-                const cleanCode = e.theCode || e.id?.split('/').pop() || 'WHO-MATCH';
-                const entityId = (e.id || '').split('/').pop() || cleanCode;
-                const symptoms = this.resolveQuickSymptoms(cleanTitle, 'Live WHO Search Match', e.chapter || '');
-
-                return {
-                  code: cleanCode,
-                  display: cleanTitle,
-                  chapter: e.chapter || 'Unknown',
-                  chapterNumber: '',
-                  category: 'Live WHO Search Match',
-                  description: 'WHO ICD-11 MMS official classification entity.',
-                  system: 'ICD-11',
-                  isLeaf: e.isLeaf === true,
-                  foundationUri: e.id || `http://id.who.int/icd/entity/${cleanCode}`,
-                  browserUrl: `https://icd.who.int/browse/2026-01/mms/en#${entityId}`,
-                  symptoms,
-                  whoVersion: 'WHO ICD-11 MMS (2026 Edition)',
-                };
-              });
-
-              const paginatedApiData = apiData.slice((page - 1) * limit, page * limit);
-
-              return {
-                success: true,
-                total: apiData.length,
-                page,
-                limit,
-                totalPages: Math.ceil(apiData.length / limit) || 1,
-                query: options.query,
-                chapter: options.chapter,
-                count: paginatedApiData.length,
-                data: paginatedApiData,
-              };
-            }
-          }
-        } catch (err: any) {
-          this.logger.warn(`WHO live search fallback in getAllIcd11Diseases: ${err.message}`);
-        }
-      }
     }
 
     const total = filtered.length;
@@ -1087,17 +1338,76 @@ export class ExternalTerminologiesService implements OnModuleDestroy {
       const found = this.foundationMap.get(d.code.toLowerCase());
       const foundationUri = d.foundationUri || found?.foundationUri || `http://id.who.int/icd/entity/${d.code}`;
       const entityId = foundationUri.split('/').pop() || d.code;
-      const browserUrl = d.browserUrl || found?.browserUrl || `https://icd.who.int/browse/2026-01/mms/en#${entityId}`;
+      const browserUrl = d.browserUrl || found?.browserUrl || `https://icd.who.int/browse/2024-01/mms/en#${entityId}`;
       const symptoms = d.symptoms && d.symptoms.length > 0 ? d.symptoms : this.resolveQuickSymptoms(d.display, d.category, d.chapter, d.description);
+      const cached = this.whoEntityCache.get(d.code.toLowerCase());
+      const synonyms = (d.synonyms && d.synonyms.length > 0)
+        ? d.synonyms
+        : (cached?.synonyms && cached.synonyms.length > 0)
+          ? cached.synonyms
+          : [];
+
       return {
         ...d,
         system: 'ICD-11',
         foundationUri,
         browserUrl,
         symptoms,
-        whoVersion: 'WHO ICD-11 MMS (2026 Edition)',
+        synonyms,
+        whoVersion: 'WHO ICD-11 MMS (2024 Edition)',
       };
     });
+
+    // Enrich page items with mapped clinical synonyms from PostgreSQL SNOMED concepts if available
+    if (this.isSnomedDbConnected && this.snomedPool) {
+      try {
+        const missingCodes = data.filter(d => !d.synonyms || d.synonyms.length === 0).map(d => d.code);
+        if (missingCodes.length > 0) {
+          const placeholders = missingCodes.map((_, i) => `$${i + 1}`).join(',');
+          const res = await this.snomedPool.query(
+            `SELECT icd11_code, preferred_term, fsn FROM snomed_concepts WHERE icd11_code IN (${placeholders})`,
+            missingCodes
+          );
+          const map = new Map<string, string[]>();
+          for (const row of res.rows) {
+            const c = row.icd11_code;
+            if (!map.has(c)) map.set(c, []);
+            const arr = map.get(c)!;
+            if (row.preferred_term) arr.push(row.preferred_term);
+            if (row.fsn) {
+              const cleanFsn = row.fsn.replace(/\s*\([^)]*\)$/, '').trim();
+              if (cleanFsn) arr.push(cleanFsn);
+            }
+          }
+          for (const item of data) {
+            if ((!item.synonyms || item.synonyms.length === 0) && map.has(item.code)) {
+              item.synonyms = Array.from(new Set(map.get(item.code)!))
+                .filter(s => s.toLowerCase() !== item.display.toLowerCase())
+                .slice(0, 10);
+            }
+          }
+        }
+      } catch (e: any) {
+        // graceful fallback
+      }
+    }
+
+    // For items on the current page that still lack synonyms, concurrently fetch live official WHO entity details
+    const needsLiveSynonyms = data.filter(d => !d.synonyms || d.synonyms.length === 0).slice(0, 6);
+    if (needsLiveSynonyms.length > 0) {
+      await Promise.allSettled(
+        needsLiveSynonyms.map(async item => {
+          try {
+            const details = await this.getIcd11EntityDetails(item.code);
+            if (details?.synonyms && details.synonyms.length > 0) {
+              item.synonyms = details.synonyms;
+            }
+          } catch (e: any) {
+            // graceful fallback
+          }
+        })
+      );
+    }
 
     return {
       success: true,
@@ -1824,16 +2134,357 @@ export class ExternalTerminologiesService implements OnModuleDestroy {
   }
 
   // =========================================================================
-  // 5f. OpenStax Anatomy & Physiology Educational References & Licensing Review
-  // Rice University - https://openstax.org/details/books/anatomy-and-physiology-2e
-  // CC BY-NC-SA 4.0 - Strictly restricted from commercial AI training ingestion
+  // 5f. OpenStax Anatomy & Physiology Educational References & Dynamic API Engine
+  // Serves all 36,651+ anatomical body structures dynamically from PostgreSQL &
+  // EMBL-EBI OLS UBERON Live Anatomy API & WHO ICD-11 Foundation.
+  // Rice University & SNOMED International & EMBL-EBI - CC BY-NC-SA 4.0
   // =========================================================================
-  getOpenStaxAnatomyReferences(options: {
+  private classifyAnatomicStructure(
+    conceptId: string,
+    preferredTerm: string,
+    fsn?: string,
+    definition?: string,
+    sourceApi: string = 'SNOMED CT International & OpenStax A&P 2e'
+  ): OpenStaxAnatomyEntry {
+    const text = (preferredTerm + ' ' + (fsn || '')).toLowerCase();
+
+    let prefix = 'ORG';
+    let systemName = 'General Human Body Organization & Microscopic Architecture';
+    let chapters = 'OpenStax A&P 2e: Chapter 1–4 (Foundational Organization, Cellular & Histology)';
+    let bookUrl = 'https://openstax.org/books/anatomy-and-physiology-2e/pages/1-introduction';
+    let scope = `Anatomical structure of ${preferredTerm}. Mapped to foundational somatic organization and histopathological tissue layers.`;
+    let coreStructures = [
+      preferredTerm,
+      'Microscopic Cellular Architecture',
+      'Extracellular Matrix & Connective Stratum',
+      'Regional Neurovascular Bundle',
+      'Adjacent Somatic Structural Boundaries',
+    ];
+    let mechanisms = [
+      'Cellular differentiation and homeostatic regulation',
+      'Structural extracellular matrix load distribution',
+      'Intercellular junctional communication (tight, gap, desmosomes)',
+    ];
+    let clinical = `Evaluated in gross pathology, anatomical landmarks for surgical resection, trauma localization, and histological biopsy diagnostics.`;
+
+    // 1. Cardiovascular & Circulation (Ch 19-20)
+    if (/cardiac|heart|aort|arter|vein|ventric|atrium|coronary|valv|vascular|pericard|myocard|endocard|capillar|pulse|circulat|emissary|saphen|sinus venosus|jugular|carotid/.test(text)) {
+      prefix = 'CARDIO';
+      systemName = 'Cardiovascular System & Systemic Circulation';
+      chapters = 'OpenStax A&P 2e: Chapter 19–20 (Heart, Blood Vessels & Hemodynamics)';
+      bookUrl = 'https://openstax.org/books/anatomy-and-physiology-2e/pages/19-introduction';
+      scope = `Anatomy of ${preferredTerm} within the cardiovascular system, including luminal endothelial lining, hemodynamic compliance, and vascular branching hierarchy.`;
+      coreStructures = [
+        preferredTerm,
+        'Vascular Tunica Intima, Media, and Adventitia',
+        'Regional Arterial/Venous Anastomoses',
+        'Endothelial Glycocalyx Barrier',
+        'Autonomic Vasomotor Regulatory Innervation',
+      ];
+      mechanisms = [
+        'Endothelial autoregulation and nitric oxide vasomotor tone',
+        'Hemodynamic shear stress adaptation and laminar flow',
+        'Hydrostatic vs colloid osmotic capillary Starling filtration',
+      ];
+      clinical = `Pathological relevance in atherogenesis, thrombosis, arterial aneurysm, venous insufficiency, ischemic hypoperfusion, and vascular catheter access.`;
+    }
+    // 2. Nervous System & Special Senses (Ch 12-16)
+    else if (/brain|cerebr|cerebel|nerve|neural|cranial|spinal|gangli|plexus|neuro|mening|medulla|pons|cortex|thalam|hypothalam|optic|olfact|retina|cochlea|tympan|vestibul|ear|cornea|lens|sclera|conjunctiv/.test(text)) {
+      prefix = 'NEURO';
+      systemName = 'Nervous System & Sensory Pathways';
+      chapters = 'OpenStax A&P 2e: Chapter 12–16 (Central, Peripheral & Autonomic Nervous Systems)';
+      bookUrl = 'https://openstax.org/books/anatomy-and-physiology-2e/pages/12-introduction';
+      scope = `Neuroanatomical architecture of ${preferredTerm}, covering neuronal soma, axonal projections, glial support scaffolding, and synaptic topography.`;
+      coreStructures = [
+        preferredTerm,
+        'Perineurium & Endoneurium Sheath Layers',
+        'Myelin Scaffolding (Schwann Cells / Oligodendrocytes)',
+        'Synaptic Boutons & Neurotransmitter Receptors',
+        'Regional Cerebrospinal Fluid / Blood-Nerve Barrier',
+      ];
+      mechanisms = [
+        'Saltatory axonal action potential conduction',
+        'Neurotransmitter vesicular docking and exocytosis',
+        'Sensory transducer threshold depolarization and synaptic plasticity',
+      ];
+      clinical = `Diagnostic relevance in peripheral entrapment neuropathies, radiculopathies, focal neurological deficits, demyelinating lesions, and neurosurgical planning.`;
+    }
+    // 3. Skeletal System & Osteology (Ch 6-8)
+    else if (/bone|skelet|femur|tibia|fibula|humer|radius|ulna|skull|mandib|maxill|verteb|patell|clavic|scapul|pelvi|stern|rib|condyl|coronoid|ossicle|iliac|pubis|ischium|metacarp|metatars|phalanx|phalang|tarsal|carpal|acromion|sacrum|coccyx|epiphys|diaphys/.test(text)) {
+      prefix = 'SKEL';
+      systemName = 'Skeletal System & Osteology';
+      chapters = 'OpenStax A&P 2e: Chapter 6–8 (Bone Tissue, Axial & Appendicular Skeleton)';
+      bookUrl = 'https://openstax.org/books/anatomy-and-physiology-2e/pages/6-introduction';
+      scope = `Osseous morphology of ${preferredTerm}, analyzing compact cortical bone density, trabecular cancellous architecture, and periosteal osteogenesis interfaces.`;
+      coreStructures = [
+        preferredTerm,
+        'Haversian Osteon Lamellar Systems',
+        'Osteoprogenitor Periosteum & Endosteum',
+        'Trabecular Marrow Cavities & Sinusoids',
+        'Cortical Nutrient Foramina & Perforating Canals',
+      ];
+      mechanisms = [
+        'Dynamic osteoblast/osteoclast bone remodeling units',
+        'Piezoelectric bone mineral remodeling under mechanical stress (Wolff’s law)',
+        'Serum calcium hydroxyapatite crystallization and resorption',
+      ];
+      clinical = `Critical for orthopedic fracture classification (AO/OTA), stress injury detection on MRI/CT, osteopenia, osteomyelitis risk, and surgical hardware fixation.`;
+    }
+    // 4. Joints & Articular Mechanics (Ch 9)
+    else if (/joint|articul|ligament|cartilag|menisc|synovi|capsule|bursa|labrum|suture/.test(text)) {
+      prefix = 'JOINTS';
+      systemName = 'Joints & Articular Mechanics';
+      chapters = 'OpenStax A&P 2e: Chapter 9 (Joints & Articular Kinematics)';
+      bookUrl = 'https://openstax.org/books/anatomy-and-physiology-2e/pages/9-introduction';
+      scope = `Articular biomechanics of ${preferredTerm}, detailing synovial lining, chondrocyte proteoglycan matrix, and capsular stabilization.`;
+      coreStructures = [
+        preferredTerm,
+        'Articular Chondrocyte Hyaline Cartilage Matrix',
+        'Synovial Membrane & Hyaluronic Lubricant Fluid',
+        'Fibrous Joint Capsule & Accessory Ligaments',
+        'Mechanoreceptive Proprioceptive Ruffini/Pacini Endings',
+      ];
+      mechanisms = [
+        'Boundary fluid film lubrication under high biomechanical shear',
+        'Viscoelastic dissipation of compressive joint loading',
+        'Chondral avascular diffusion nutrition via cyclic compression',
+      ];
+      clinical = `Primary site of osteoarthritic degradation, rheumatoid erosive synovitis, traumatic ligamentous sprains, meniscal tearing, and arthroscopic intervention.`;
+    }
+    // 5. Muscular System & Dynamics (Ch 10-11)
+    else if (/muscle|muscul|tendon|fascia|aponeuros|biceps|triceps|quadricep|gastrocnem|deltoid|pectoral|psoas|latissim|sphincter|flexor|extensor|adductor|abductor|rotator/.test(text)) {
+      prefix = 'MUSCLE';
+      systemName = 'Muscular System & Biomechanical Dynamics';
+      chapters = 'OpenStax A&P 2e: Chapter 10–11 (Muscle Tissue & Axial/Appendicular Musculature)';
+      bookUrl = 'https://openstax.org/books/anatomy-and-physiology-2e/pages/10-introduction';
+      scope = `Myological architecture of ${preferredTerm}, covering myofibril sarcomere arrays, endomysial/perimysial septa, and myotendinous enthesis connections.`;
+      coreStructures = [
+        preferredTerm,
+        'Sarcoplasmic Reticulum & Transverse (T) Tubules',
+        'Actin-Myosin Sarcomeric Contractile Units',
+        'Myotendinous Force-Transmission Junctions',
+        'Intramuscular Motor Nerve Terminals & Spindles',
+      ];
+      mechanisms = [
+        'Excitation-contraction coupling via ryanodine Ca2+ release',
+        'Cross-bridge power stroke cycling powered by ATP hydrolysis',
+        'Length-tension relationship and motor unit rate coding',
+      ];
+      clinical = `Relevant in muscular dystrophies, rhabdomyolysis, compartment syndrome, tendon avulsion, sports strain injuries, and electromyographic (EMG) diagnostics.`;
+    }
+    // 6. Respiratory System (Ch 22)
+    else if (/lung|pulmon|bronch|trache|alveol|pleur|laryn|pharyn|nasal|respirat|diaphragm/.test(text)) {
+      prefix = 'RESP';
+      systemName = 'Respiratory System & Pulmonology';
+      chapters = 'OpenStax A&P 2e: Chapter 22 (Respiratory Anatomy & Alveolar Gas Exchange)';
+      bookUrl = 'https://openstax.org/books/anatomy-and-physiology-2e/pages/22-introduction';
+      scope = `Respiratory architecture of ${preferredTerm}, including pseudostratified ciliated epithelium, bronchial branching, and alveolar diffusion membranes.`;
+      coreStructures = [
+        preferredTerm,
+        'Alveolar Type I & Type II Pneumocyte Epithelium',
+        'Pulmonary Surfactant Phospholipid Monolayer',
+        'Subepithelial Bronchial Smooth Muscle Tone',
+        'Peribronchial Bronchovascular Adnexa',
+      ];
+      mechanisms = [
+        'Ventilation-perfusion (V/Q) ratio matching',
+        'Fick’s law alveolocapillary O2/CO2 gas diffusion',
+        'Surfactant-mediated reduction of alveolar surface tension',
+      ];
+      clinical = `Pathological alterations in COPD, asthma bronchospasm, acute respiratory distress syndrome (ARDS), interstitial fibrosis, and pulmonary embolism.`;
+    }
+    // 7. Digestive System & GI Tract (Ch 23)
+    else if (/stomach|gastr|intestin|colon|duoden|jejun|ileum|liver|hepat|pancrea|esophag|biliary|gallbladder|rectum|cecum|appendix|bowel|oral|tongue|tooth|teeth|dental|gingiv|salivar/.test(text)) {
+      prefix = 'DIGEST';
+      systemName = 'Digestive System & Gastrointestinal Tract';
+      chapters = 'OpenStax A&P 2e: Chapter 23 (Digestive System & Splanchnic Organs)';
+      bookUrl = 'https://openstax.org/books/anatomy-and-physiology-2e/pages/23-introduction';
+      scope = `Enteric anatomical organization of ${preferredTerm}, analyzing mucosal epithelial transport, muscularis externa peristalsis, and splanchnic exocrine secretion.`;
+      coreStructures = [
+        preferredTerm,
+        'Mucosal Enterocyte & Goblet Cell Epithelium',
+        'Myenteric (Auerbach) & Submucosal (Meissner) Plexus',
+        'Lamina Propria GALT Immunological Follicles',
+        'Splanchnic Mesenteric Microvascular Beds',
+      ];
+      mechanisms = [
+        'Peristaltic enteral propulsive wave propagation',
+        'Brush-border enzymatic macronutrient hydrolytic breakdown',
+        'Bile acid enterohepatic circulation and hepatic xenobiotic detoxification',
+      ];
+      clinical = `Clinical target in Crohn disease, ulcerative colitis, peptic ulceration, gastrointestinal hemorrhage, cirrhosis portal hypertension, and colorectal neoplasia.`;
+    }
+    // 8. Urinary & Renal System (Ch 25-26)
+    else if (/kidney|renal|nephron|glomerul|ureter|bladder|urethr|bowman|tubule|calyx|urinar/.test(text)) {
+      prefix = 'RENAL';
+      systemName = 'Urinary & Renal System';
+      chapters = 'OpenStax A&P 2e: Chapter 25–26 (Urinary System & Fluid Homeostasis)';
+      bookUrl = 'https://openstax.org/books/anatomy-and-physiology-2e/pages/25-introduction';
+      scope = `Nephrological anatomy of ${preferredTerm}, detailing glomerular filtration barriers, tubular reabsorptive segments, and urothelial urinary conduits.`;
+      coreStructures = [
+        preferredTerm,
+        'Glomerular Podocyte Fenestrated Capillary Membrane',
+        'Proximal & Distal Convoluted Tubule Epithelium',
+        'Medullary Loop of Henle Countercurrent Conduits',
+        'Transitional Urothelium & Detrusor Smooth Muscle',
+      ];
+      mechanisms = [
+        'Glomerular capillary hydrostatic ultrafiltration (GFR)',
+        'Tubuloglomerular feedback and renin release from macula densa',
+        'Aquaporin-mediated medullary water conservation via ADH',
+      ];
+      clinical = `Direct focus in acute tubular necrosis, nephrotic/nephritic glomerulonephritis, nephrolithiasis obstruction, and chronic end-stage kidney failure.`;
+    }
+    // 9. Endocrine System & Glands (Ch 17)
+    else if (/thyroid|parathyroid|adrenal|pituitar|hypophysis|islet|pineal|endocrine/.test(text)) {
+      prefix = 'ENDO';
+      systemName = 'Endocrine System & Hormonal Axis';
+      chapters = 'OpenStax A&P 2e: Chapter 17 (The Endocrine System)';
+      bookUrl = 'https://openstax.org/books/anatomy-and-physiology-2e/pages/17-introduction';
+      scope = `Endocrine histology of ${preferredTerm}, analyzing secretagogue granular synthesis, fenestrated sinusoidal capillaries, and hormonal signaling cascades.`;
+      coreStructures = [
+        preferredTerm,
+        'Specialized Neuroendocrine Secretory Follicles/Cords',
+        'Fenestrated Capillary Sinusoidal Exchange Network',
+        'Intracellular Peptide/Steroid Synthesis Organelles',
+        'Targeted Feedback Receptor Cell Populations',
+      ];
+      mechanisms = [
+        'Humoral, neural, and hormonal stimulation axes',
+        'Negative feedback set-point regulation of circulating ligands',
+        'Second-messenger G-protein coupled and nuclear receptor transcription',
+      ];
+      clinical = `Evaluated in endocrine adenomas, Graves hyperthyroidism, Hashimoto thyroiditis, Cushing syndrome, adrenal insufficiency, and metabolic hormone disorders.`;
+    }
+    // 10. Integumentary System (Ch 5)
+    else if (/skin|dermis|epiderm|cutan|hair|nail|sebace|subcutan|sweat|integument/.test(text)) {
+      prefix = 'INTEG';
+      systemName = 'Integumentary System & Cutaneous Barrier';
+      chapters = 'OpenStax A&P 2e: Chapter 5 (The Integumentary System)';
+      bookUrl = 'https://openstax.org/books/anatomy-and-physiology-2e/pages/5-introduction';
+      scope = `Cutaneous anatomy of ${preferredTerm}, analyzing stratified squamous stratum corneum, dermal collagenous bundles, and cutaneous neurovascular beds.`;
+      coreStructures = [
+        preferredTerm,
+        'Stratified Keratinizing Epithelial Strata',
+        'Reticular & Papillary Dermal Collagen Matrix',
+        'Cutaneous Merkel/Meissner Sensory Mechanoreceptors',
+        'Eccrine, Apocrine, and Sebaceous Adnexal Glands',
+      ];
+      mechanisms = [
+        'Waterproof lipid-protein epidermal permeability barrier',
+        'Cutaneous vascular vasodilation/vasoconstriction thermoregulation',
+        'Immune defense via epidermal Langerhans antigen presentation',
+      ];
+      clinical = `Clinical focus in burn depth assessment (Wallace rule of nines), melanoma screening, decubitus ulcers, psoriasis, and dermatologic surgical margins.`;
+    }
+    // 11. Lymphatic & Immune System (Ch 21)
+    else if (/lymph|spleen|thymus|tonsil|immun|node/.test(text)) {
+      prefix = 'IMMUNE';
+      systemName = 'Lymphatic & Immune System';
+      chapters = 'OpenStax A&P 2e: Chapter 21 (Lymphatic and Immune System)';
+      bookUrl = 'https://openstax.org/books/anatomy-and-physiology-2e/pages/21-introduction';
+      scope = `Lymphatic morphology of ${preferredTerm}, detailing lymphoid sinuses, germinal center B-cell follicles, and lymph fluid filtration kinetics.`;
+      coreStructures = [
+        preferredTerm,
+        'Afferent & Efferent Lymphatic Vascular Channels',
+        'Subcapsular & Medullary Macrophage Sinuses',
+        'Follicular Dendritic Cell Germinal Centers',
+        'High Endothelial Venules (HEV) for Lymphocyte Extravasation',
+      ];
+      mechanisms = [
+        'Extracellular fluid oncotic reclamation and lymph transport',
+        'Foreign pathogen phagocytosis and antigenic presentation',
+        'Somatic hypermutation and immunoglobulin isotype switching',
+      ];
+      clinical = `Primary staging in oncological sentinel lymph node biopsy, lymphoma diagnostic grading, secondary lymphedema, and systemic septicemia clearance.`;
+    }
+    // 12. Reproductive System & Embryology (Ch 27-28)
+    else if (/ovary|uter|testis|prostat|fallopian|epididym|cervix|scrot|vulva|vagin|penis|placenta|fetus|embryo|repro/.test(text)) {
+      prefix = 'REPRO';
+      systemName = 'Reproductive System & Human Development';
+      chapters = 'OpenStax A&P 2e: Chapter 27–28 (Reproductive Systems & Embryology)';
+      bookUrl = 'https://openstax.org/books/anatomy-and-physiology-2e/pages/27-introduction';
+      scope = `Reproductive anatomical structure of ${preferredTerm}, covering gonadal gametogenic parenchymal cords, tubular transit conduits, and gestational interfaces.`;
+      coreStructures = [
+        preferredTerm,
+        'Gametogenic Meiotic Cellular Lineages',
+        'Endocrine Gonadal Interstitial Cells (Leydig/Theca)',
+        'Epithelial Ciliated Ductal Transport Mucosa',
+        'Myometrial/Dartos Smooth Muscular Layers',
+      ];
+      mechanisms = [
+        'Hormone-dependent gametogenesis (spermatogenesis and folliculogenesis)',
+        'Cyclical uterine endometrial preparation and decidualization',
+        'Fetomaternal hemochorial exchange across syncytiotrophoblasts',
+      ];
+      clinical = `Assessed in infertility workups, ectopic pregnancy, benign prostatic hypertrophy (BPH), endometriosis, and obstetric fetal monitoring.`;
+    }
+
+    if (definition && definition.trim().length > 10) {
+      scope = `${definition.trim()} (System: ${systemName})`;
+    }
+
+    return {
+      systemCode: `${prefix}-${conceptId}`,
+      systemName: preferredTerm,
+      openStaxChapters: chapters,
+      educationalScope: scope,
+      coreStructures,
+      keyPhysiologicalMechanisms: mechanisms,
+      clinicalRelevance: clinical,
+      licenseType: 'CC BY-NC-SA 4.0',
+      aiIngestionStatus: 'RESTRICTED / NO AI TRAINING',
+      commercialPipelinePolicy: 'EXCLUDED FROM COMMERCIAL AI TRAINING PIPELINE',
+      governanceNotice:
+        'OpenStax Anatomy and Physiology 2e material is published under a non-commercial ShareAlike licence (CC BY-NC-SA 4.0), and SNOMED CT International body structures are licensed medical terminologies. Explicitly restricted to clinical reference and educational scoping; strictly excluded from commercial AI model training.',
+      officialBookUrl: bookUrl,
+      officialLicenseUrl: 'https://openstax.org/license',
+      conceptId,
+      fsn,
+      sourceApi,
+    };
+  }
+
+  private getSystemFilterSql(system: string): string | null {
+    switch (system) {
+      case 'CARDIO':
+        return `(preferred_term ILIKE '%heart%' OR preferred_term ILIKE '%artery%' OR preferred_term ILIKE '%vein%' OR preferred_term ILIKE '%vascular%' OR preferred_term ILIKE '%ventricle%' OR preferred_term ILIKE '%atrium%' OR preferred_term ILIKE '%aorta%' OR preferred_term ILIKE '%valve%' OR preferred_term ILIKE '%coronary%' OR preferred_term ILIKE '%cardiac%' OR preferred_term ILIKE '%pericard%' OR preferred_term ILIKE '%myocard%')`;
+      case 'NEURO':
+        return `(preferred_term ILIKE '%brain%' OR preferred_term ILIKE '%nerve%' OR preferred_term ILIKE '%neural%' OR preferred_term ILIKE '%cerebr%' OR preferred_term ILIKE '%spinal cord%' OR preferred_term ILIKE '%ganglion%' OR preferred_term ILIKE '%plexus%' OR preferred_term ILIKE '%retina%' OR preferred_term ILIKE '%mening%' OR preferred_term ILIKE '%optic%' OR preferred_term ILIKE '%cochlea%')`;
+      case 'SKEL':
+        return `(preferred_term ILIKE '%bone%' OR preferred_term ILIKE '%femur%' OR preferred_term ILIKE '%tibia%' OR preferred_term ILIKE '%fibula%' OR preferred_term ILIKE '%skull%' OR preferred_term ILIKE '%mandible%' OR preferred_term ILIKE '%vertebra%' OR preferred_term ILIKE '%rib%' OR preferred_term ILIKE '%pelvis%' OR preferred_term ILIKE '%clavicle%' OR preferred_term ILIKE '%scapula%' OR preferred_term ILIKE '%sternum%')`;
+      case 'JOINTS':
+        return `(preferred_term ILIKE '%joint%' OR preferred_term ILIKE '%articular%' OR preferred_term ILIKE '%ligament%' OR preferred_term ILIKE '%cartilage%' OR preferred_term ILIKE '%meniscus%' OR preferred_term ILIKE '%synovial%' OR preferred_term ILIKE '%bursa%')`;
+      case 'MUSCLE':
+        return `(preferred_term ILIKE '%muscle%' OR preferred_term ILIKE '%tendon%' OR preferred_term ILIKE '%fascia%' OR preferred_term ILIKE '%diaphragm%' OR preferred_term ILIKE '%biceps%' OR preferred_term ILIKE '%triceps%' OR preferred_term ILIKE '%quadriceps%')`;
+      case 'RESP':
+        return `(preferred_term ILIKE '%lung%' OR preferred_term ILIKE '%bronch%' OR preferred_term ILIKE '%trachea%' OR preferred_term ILIKE '%larynx%' OR preferred_term ILIKE '%pleura%' OR preferred_term ILIKE '%alveol%' OR preferred_term ILIKE '%nasal%' OR preferred_term ILIKE '%pharynx%')`;
+      case 'DIGEST':
+        return `(preferred_term ILIKE '%stomach%' OR preferred_term ILIKE '%intestin%' OR preferred_term ILIKE '%colon%' OR preferred_term ILIKE '%liver%' OR preferred_term ILIKE '%pancreas%' OR preferred_term ILIKE '%esophagus%' OR preferred_term ILIKE '%gallbladder%' OR preferred_term ILIKE '%rectum%' OR preferred_term ILIKE '%tooth%' OR preferred_term ILIKE '%tongue%')`;
+      case 'RENAL':
+        return `(preferred_term ILIKE '%kidney%' OR preferred_term ILIKE '%renal%' OR preferred_term ILIKE '%nephron%' OR preferred_term ILIKE '%glomerul%' OR preferred_term ILIKE '%ureter%' OR preferred_term ILIKE '%bladder%' OR preferred_term ILIKE '%urethra%')`;
+      case 'ENDO':
+        return `(preferred_term ILIKE '%thyroid%' OR preferred_term ILIKE '%parathyroid%' OR preferred_term ILIKE '%adrenal%' OR preferred_term ILIKE '%pituitary%' OR preferred_term ILIKE '%hypophysis%' OR preferred_term ILIKE '%islet%' OR preferred_term ILIKE '%pineal%')`;
+      case 'INTEG':
+        return `(preferred_term ILIKE '%skin%' OR preferred_term ILIKE '%dermis%' OR preferred_term ILIKE '%epiderm%' OR preferred_term ILIKE '%cutaneous%' OR preferred_term ILIKE '%hair%' OR preferred_term ILIKE '%nail%' OR preferred_term ILIKE '%subcutaneous%' OR preferred_term ILIKE '%sweat%')`;
+      case 'IMMUNE':
+        return `(preferred_term ILIKE '%lymph%' OR preferred_term ILIKE '%spleen%' OR preferred_term ILIKE '%tonsil%' OR preferred_term ILIKE '%immune%')`;
+      case 'REPRO':
+        return `(preferred_term ILIKE '%ovary%' OR preferred_term ILIKE '%uter%' OR preferred_term ILIKE '%testis%' OR preferred_term ILIKE '%prostate%' OR preferred_term ILIKE '%fallopian%' OR preferred_term ILIKE '%epididymis%' OR preferred_term ILIKE '%cervix%' OR preferred_term ILIKE '%placenta%' OR preferred_term ILIKE '%vulva%' OR preferred_term ILIKE '%penis%')`;
+      case 'ORG':
+        return `(preferred_term ILIKE '%tissue%' OR preferred_term ILIKE '%cell%' OR preferred_term ILIKE '%membrane%' OR preferred_term ILIKE '%structure%')`;
+      default:
+        return null;
+    }
+  }
+
+  async getOpenStaxAnatomyReferences(options: {
     page?: number | string;
     limit?: number | string;
     query?: string;
+    q?: string;
     system?: string;
-  }): {
+  }): Promise<{
     success: boolean;
     total: number;
     page: number;
@@ -1842,65 +2493,319 @@ export class ExternalTerminologiesService implements OnModuleDestroy {
     metadata: OpenStaxLicensingMetadata;
     count: number;
     data: OpenStaxAnatomyEntry[];
-  } {
+  }> {
     const page = Math.max(1, parseInt(String(options.page || 1), 10));
-    const limit = Math.max(1, Math.min(100, parseInt(String(options.limit || 50), 10)));
-    const query = (options.query || '').trim().toLowerCase();
-    const system = (options.system || '').trim().toLowerCase();
+    const limit = Math.max(1, Math.min(100, parseInt(String(options.limit || 25), 10)));
+    const rawQuery = (options.q || options.query || '').trim();
+    const rawSystem = (options.system || '').trim().toUpperCase();
 
-    let filtered = OPENSTAX_ANATOMY_DATA;
+    // 1. Primary: PostgreSQL Live Terminology Engine (36,651 SNOMED CT International Body Structures)
+    if (this.isSnomedDbConnected && this.snomedPool) {
+      try {
+        const whereClauses: string[] = ["(hierarchy ILIKE '%body structure%' OR semantic_tag ILIKE '%body structure%')"];
+        const params: any[] = [];
+        let paramIdx = 1;
 
-    if (system && system !== 'all') {
-      filtered = filtered.filter(
-        item =>
-          item.systemCode.toLowerCase() === system ||
-          item.systemCode.toLowerCase().startsWith(system) ||
-          item.systemName.toLowerCase().includes(system) ||
-          item.openStaxChapters.toLowerCase().includes(system),
-      );
-    }
+        if (rawSystem && rawSystem !== 'ALL') {
+          const sysSql = this.getSystemFilterSql(rawSystem);
+          if (sysSql) {
+            whereClauses.push(sysSql);
+          }
+        }
 
-    if (query) {
-      filtered = filtered.filter(item => {
-        return (
-          item.systemCode.toLowerCase().includes(query) ||
-          item.systemName.toLowerCase().includes(query) ||
-          item.openStaxChapters.toLowerCase().includes(query) ||
-          item.educationalScope.toLowerCase().includes(query) ||
-          item.clinicalRelevance.toLowerCase().includes(query) ||
-          item.coreStructures.some(s => s.toLowerCase().includes(query)) ||
-          item.keyPhysiologicalMechanisms.some(m => m.toLowerCase().includes(query))
+        if (rawQuery) {
+          whereClauses.push(`(concept_id ILIKE $${paramIdx} OR preferred_term ILIKE $${paramIdx + 1} OR fsn ILIKE $${paramIdx + 1} OR icd11_code ILIKE $${paramIdx + 1})`);
+          params.push(`%${rawQuery}%`);
+          params.push(`%${rawQuery}%`);
+          paramIdx += 2;
+        }
+
+        const whereSql = `WHERE ${whereClauses.join(' AND ')}`;
+
+        let total = 0;
+        if (!rawQuery && (!rawSystem || rawSystem === 'ALL')) {
+          total = 36651;
+        } else {
+          const countSql = `SELECT COUNT(1) as total FROM snomed_concepts ${whereSql};`;
+          const countRes = await this.snomedPool.query(countSql, params);
+          total = parseInt(countRes.rows[0]?.total || '0', 10);
+        }
+
+        const offset = (page - 1) * limit;
+        const dataParams = [...params, limit, offset];
+        const dataSql = `SELECT concept_id, preferred_term, fsn, semantic_tag, hierarchy, icd11_code, icd11_display, definition
+                         FROM snomed_concepts
+                         ${whereSql}
+                         ORDER BY preferred_term ASC
+                         LIMIT $${paramIdx} OFFSET $${paramIdx + 1};`;
+        const dataRes = await this.snomedPool.query(dataSql, dataParams);
+
+        const mappedList: OpenStaxAnatomyEntry[] = dataRes.rows.map(row =>
+          this.classifyAnatomicStructure(row.concept_id, row.preferred_term, row.fsn, row.definition)
         );
-      });
+
+        // When a search query is active, concurrently check live EMBL-EBI OLS UBERON API to enrich results
+        if (rawQuery && rawQuery.length >= 2) {
+          try {
+            const ebiUrl = `https://www.ebi.ac.uk/ols4/api/search?q=${encodeURIComponent(rawQuery)}&ontology=uberon&rows=10`;
+            const ebiRes = await fetch(ebiUrl, {
+              headers: { 'User-Agent': 'EnNanba-Medical-Platform/1.0', Accept: 'application/json' },
+              signal: AbortSignal.timeout(2500),
+            });
+            if (ebiRes.ok) {
+              const ebiJson = await ebiRes.json();
+              const docs: any[] = ebiJson?.response?.docs || [];
+              for (const doc of docs) {
+                if (doc.label && !mappedList.some(m => m.systemName.toLowerCase() === doc.label.toLowerCase())) {
+                  const oboId = doc.obo_id || doc.short_form || 'UBERON';
+                  const desc = doc.description?.[0] || '';
+                  const ebiEntry = this.classifyAnatomicStructure(
+                    oboId,
+                    doc.label,
+                    doc.exact_synonyms?.join(', '),
+                    desc,
+                    'EMBL-EBI OLS (UBERON Live Anatomy API)'
+                  );
+                  if (doc.exact_synonyms) {
+                    ebiEntry.synonyms = doc.exact_synonyms;
+                  }
+                  ebiEntry.uberonId = oboId;
+                  mappedList.unshift(ebiEntry);
+                  total += 1;
+                }
+              }
+            }
+          } catch (e: any) {
+            // timeout / graceful fallback
+          }
+        }
+
+        return {
+          success: true,
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit) || 1,
+          metadata: {
+            ...OPENSTAX_LICENSING_METADATA,
+            totalReferencesCount: total,
+            totalAnatomicalStructures: total,
+          },
+          count: mappedList.length,
+          data: mappedList,
+        };
+      } catch (err: any) {
+        this.logger.warn(`Postgres Anatomy query failed: ${err.message}. Falling back to live API.`);
+      }
     }
 
-    const total = filtered.length;
-    const totalPages = Math.ceil(total / limit) || 1;
-    const startIndex = (page - 1) * limit;
-    const paginated = filtered.slice(startIndex, startIndex + limit);
+    // 2. Direct Live EMBL-EBI OLS UBERON API fallback if database is unavailable
+    return await this.fetchLiveEbiUberonAnatomy(page, limit, rawQuery);
+  }
 
+  async getOpenStaxAnatomyDetails(codeOrQuery: string): Promise<OpenStaxAnatomyEntry | null> {
+    const raw = (codeOrQuery || '').trim();
+    if (!raw) return null;
+
+    // Remove prefix if present: e.g. CARDIO-43487005 -> 43487005
+    const cleanCode = raw.replace(/^[A-Z]+-/, '');
+
+    let foundConcept: any = null;
+
+    // 1. Check PostgreSQL SNOMED CT Database
+    if (this.isSnomedDbConnected && this.snomedPool) {
+      try {
+        const querySql = `
+          SELECT concept_id, preferred_term, fsn, semantic_tag, hierarchy, icd11_code, icd11_display, definition
+          FROM snomed_concepts
+          WHERE (hierarchy ILIKE '%body structure%' OR semantic_tag ILIKE '%body structure%')
+            AND (concept_id = $1 OR preferred_term ILIKE $2)
+          LIMIT 1;
+        `;
+        const res = await this.snomedPool.query(querySql, [cleanCode, raw]);
+        if (res.rows.length > 0) {
+          foundConcept = res.rows[0];
+        }
+      } catch (err: any) {
+        this.logger.warn(`Postgres anatomy detail query failed: ${err.message}`);
+      }
+    }
+
+    // 2. Concurrently query live EMBL-EBI OLS UBERON API for rich description & synonyms
+    let ebiDescription: string | null = null;
+    let ebiSynonyms: string[] = [];
+    let uberonId: string | null = null;
+
+    try {
+      const searchTerm = foundConcept?.preferred_term || raw;
+      const ebiUrl = `https://www.ebi.ac.uk/ols4/api/search?q=${encodeURIComponent(searchTerm)}&ontology=uberon&rows=3`;
+      const ebiRes = await fetch(ebiUrl, {
+        headers: { 'User-Agent': 'EnNanba-Medical-Platform/1.0', Accept: 'application/json' },
+        signal: AbortSignal.timeout(2500),
+      });
+      if (ebiRes.ok) {
+        const ebiJson = await ebiRes.json();
+        const doc = ebiJson?.response?.docs?.[0];
+        if (doc) {
+          ebiDescription = doc.description?.[0] || null;
+          ebiSynonyms = doc.exact_synonyms || [];
+          uberonId = doc.obo_id || doc.short_form || null;
+        }
+      }
+    } catch (e: any) {
+      // ignore timeout
+    }
+
+    // 3. Concurrently query WHO ICD-11 for linked clinical diagnosis
+    let whoCode: string | null = foundConcept?.icd11_code || null;
+    try {
+      const token = await this.getWhoAccessToken();
+      if (token && !whoCode) {
+        const whoSearchUrl = `https://id.who.int/icd/release/11/2024-01/mms/search?q=${encodeURIComponent(foundConcept?.preferred_term || raw)}`;
+        const whoRes = await fetch(whoSearchUrl, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/json',
+            'API-Version': 'v2',
+            'Accept-Language': 'en',
+          },
+          signal: AbortSignal.timeout(2500),
+        });
+        if (whoRes.ok) {
+          const whoData = await whoRes.json();
+          const entity = whoData?.destinationEntities?.[0];
+          if (entity?.theCode) {
+            whoCode = entity.theCode;
+          }
+        }
+      }
+    } catch (e: any) {
+      // ignore
+    }
+
+    if (foundConcept) {
+      const entry = this.classifyAnatomicStructure(
+        foundConcept.concept_id,
+        foundConcept.preferred_term,
+        foundConcept.fsn,
+        ebiDescription || foundConcept.definition
+      );
+      if (ebiSynonyms.length > 0) {
+        entry.synonyms = ebiSynonyms;
+      }
+      if (uberonId) {
+        entry.uberonId = uberonId;
+      }
+      if (whoCode) {
+        entry.whoIcd11Code = whoCode;
+      }
+      return entry;
+    }
+
+    // If not found in DB, check if EBI had a match
+    if (ebiDescription || uberonId) {
+      const entry = this.classifyAnatomicStructure(
+        uberonId || 'UBERON-API',
+        raw,
+        raw,
+        ebiDescription || undefined,
+        'EMBL-EBI OLS (UBERON Live Anatomy API)'
+      );
+      if (ebiSynonyms.length > 0) {
+        entry.synonyms = ebiSynonyms;
+      }
+      if (uberonId) {
+        entry.uberonId = uberonId;
+      }
+      if (whoCode) {
+        entry.whoIcd11Code = whoCode;
+      }
+      return entry;
+    }
+
+    // Fallback to in-memory static array if everything else fails
+    const staticMatch = OPENSTAX_ANATOMY_DATA.find(
+      item =>
+        item.systemCode.toLowerCase() === raw.toLowerCase() ||
+        item.systemName.toLowerCase() === raw.toLowerCase() ||
+        item.systemName.toLowerCase().includes(raw.toLowerCase())
+    );
+
+    return staticMatch || null;
+  }
+
+  private async fetchLiveEbiUberonAnatomy(
+    page: number,
+    limit: number,
+    query: string
+  ): Promise<{
+    success: boolean;
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    metadata: OpenStaxLicensingMetadata;
+    count: number;
+    data: OpenStaxAnatomyEntry[];
+  }> {
+    const searchTerm = query || 'organ';
+    try {
+      const start = (page - 1) * limit;
+      const url = `https://www.ebi.ac.uk/ols4/api/search?q=${encodeURIComponent(searchTerm)}&ontology=uberon&rows=${limit}&start=${start}`;
+      const res = await fetch(url, {
+        headers: { 'User-Agent': 'EnNanba-Medical-Platform/1.0', Accept: 'application/json' },
+        signal: AbortSignal.timeout(4000),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const total = json?.response?.numFound || 0;
+        const docs = json?.response?.docs || [];
+        const data = docs.map((doc: any) => {
+          const oboId = doc.obo_id || doc.short_form || 'UBERON';
+          const entry = this.classifyAnatomicStructure(
+            oboId,
+            doc.label,
+            doc.exact_synonyms?.join(', '),
+            doc.description?.[0],
+            'EMBL-EBI OLS (UBERON Live Anatomy API)'
+          );
+          if (doc.exact_synonyms) entry.synonyms = doc.exact_synonyms;
+          entry.uberonId = oboId;
+          return entry;
+        });
+
+        return {
+          success: true,
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit) || 1,
+          metadata: {
+            ...OPENSTAX_LICENSING_METADATA,
+            totalReferencesCount: total,
+            totalAnatomicalStructures: total,
+          },
+          count: data.length,
+          data,
+        };
+      }
+    } catch (e: any) {
+      this.logger.warn(`Live EBI UBERON API query failed: ${e.message}`);
+    }
+
+    const total = OPENSTAX_ANATOMY_DATA.length;
+    const startIndex = (page - 1) * limit;
+    const paginated = OPENSTAX_ANATOMY_DATA.slice(startIndex, startIndex + limit);
     return {
       success: true,
       total,
       page,
       limit,
-      totalPages,
+      totalPages: Math.ceil(total / limit) || 1,
       metadata: OPENSTAX_LICENSING_METADATA,
       count: paginated.length,
       data: paginated,
     };
-  }
-
-  getOpenStaxAnatomyDetails(codeOrQuery: string): OpenStaxAnatomyEntry | null {
-    const clean = (codeOrQuery || '').trim().toLowerCase();
-    return (
-      OPENSTAX_ANATOMY_DATA.find(
-        item =>
-          item.systemCode.toLowerCase() === clean ||
-          item.systemName.toLowerCase() === clean ||
-          item.systemName.toLowerCase().includes(clean),
-      ) || null
-    );
   }
 
   // =========================================================================
@@ -2066,74 +2971,54 @@ export class ExternalTerminologiesService implements OnModuleDestroy {
     // 2. Resolve Foundation metadata & attempt live WHO API entity definition fetch
     const localFound = this.foundationMap.get(code.toLowerCase()) || this.foundationMap.get((matched?.code || '').toLowerCase());
     let foundationUri = matched?.foundationUri || localFound?.foundationUri || `http://id.who.int/icd/entity/${code || 'WHO-ENTITY'}`;
-    let browserUrl = matched?.browserUrl || localFound?.browserUrl || `https://icd.who.int/browse/2026-01/mms/en#${foundationUri.split('/').pop() || code}`;
+    let browserUrl = matched?.browserUrl || localFound?.browserUrl || `https://icd.who.int/browse/2024-01/mms/en#${foundationUri.split('/').pop() || code}`;
     let whoDefinition = '';
     let whoStatus: 'OFFICIAL_MMS_LIVE_API' | 'OFFICIAL_MMS' = 'OFFICIAL_MMS';
 
-    const clientId = this.configService.get<string>('ICD11_CLIENT_ID');
-    const clientSecret = this.configService.get<string>('ICD11_CLIENT_SECRET');
-
-    if (clientId && clientSecret) {
-      try {
-        const tokenParams = new URLSearchParams();
-        tokenParams.append('grant_type', 'client_credentials');
-        tokenParams.append('client_id', clientId);
-        tokenParams.append('client_secret', clientSecret);
-        tokenParams.append('scope', 'icdapi_access');
-
-        const tokenRes = await fetch('https://icdaccessmanagement.who.int/connect/token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: tokenParams.toString(),
+    try {
+      const token = await this.getWhoAccessToken();
+      if (token) {
+        const sRes = await fetch(`https://id.who.int/icd/release/11/2024-01/mms/search?q=${encodeURIComponent(code || display)}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/json',
+            'Accept-Language': 'en',
+            'API-Version': 'v2',
+          },
           signal: AbortSignal.timeout(3500),
         });
 
-        if (tokenRes.ok) {
-          const tokenData = await tokenRes.json();
-          const token = tokenData.access_token;
+        if (sRes.ok) {
+          const sData = await sRes.json();
+          const topEntity = sData.destinationEntities?.[0];
+          if (topEntity?.id) {
+            foundationUri = topEntity.id;
+            const entityId = topEntity.id.split('/').pop();
+            browserUrl = `https://icd.who.int/browse/2024-01/mms/en#${entityId}`;
 
-          const sRes = await fetch(`https://id.who.int/icd/release/11/2026-01/mms/search?q=${encodeURIComponent(code || display)}`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              Accept: 'application/json',
-              'Accept-Language': 'en',
-              'API-Version': 'v2',
-            },
-            signal: AbortSignal.timeout(3500),
-          });
+            const eRes = await fetch(topEntity.id.replace('http://', 'https://'), {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: 'application/json',
+                'Accept-Language': 'en',
+                'API-Version': 'v2',
+              },
+              signal: AbortSignal.timeout(3500),
+            });
 
-          if (sRes.ok) {
-            const sData = await sRes.json();
-            const topEntity = sData.destinationEntities?.[0];
-            if (topEntity?.id) {
-              foundationUri = topEntity.id;
-              const entityId = topEntity.id.split('/').pop();
-              browserUrl = `https://icd.who.int/browse/2026-01/mms/en#${entityId}`;
-
-              const eRes = await fetch(topEntity.id, {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  Accept: 'application/json',
-                  'Accept-Language': 'en',
-                  'API-Version': 'v2',
-                },
-                signal: AbortSignal.timeout(3500),
-              });
-
-              if (eRes.ok) {
-                const eData = await eRes.json();
-                if (eData.definition?.['@value']) {
-                  whoDefinition = eData.definition['@value'];
-                  description = whoDefinition;
-                  whoStatus = 'OFFICIAL_MMS_LIVE_API';
-                }
+            if (eRes.ok) {
+              const eData = await eRes.json();
+              if (eData.definition?.['@value']) {
+                whoDefinition = eData.definition['@value'];
+                description = whoDefinition;
+                whoStatus = 'OFFICIAL_MMS_LIVE_API';
               }
             }
           }
         }
-      } catch (e: any) {
-        this.logger.warn(`Live WHO entity definition fetch skipped: ${e.message}`);
       }
+    } catch (e: any) {
+      this.logger.warn(`Live WHO entity definition fetch skipped: ${e.message}`);
     }
 
     // 2b. Fetch live health overview from NIH MedlinePlus / HealthTopics API
@@ -2301,8 +3186,8 @@ export class ExternalTerminologiesService implements OnModuleDestroy {
   private resolveWhoFoundationEntities(code: string, display: string, category: string, chapter: string) {
     const text = `${display} ${category} ${chapter}`.toLowerCase();
 
-    // 1. Cholera / Acute Intestinal Bacterial Infections
-    if (text.includes('cholera') || (text.includes('intestin') && text.includes('infect'))) {
+    // 1. Cholera (Vibrio cholerae)
+    if (text.includes('cholera') || text.includes('vibrio cholerae')) {
       return {
         interventions: [
           {
