@@ -6,7 +6,7 @@ import { Pool } from 'pg';
 import { MEDICAL_DICTIONARIES } from './medical-dictionary.data';
 import { LiveApiCodeMatch } from '../common/interfaces/clinical.interface';
 import { ALL_ICD11_DISEASES, Icd11DiseaseEntry } from './icd11-diseases.data';
-import { TERMINOLOGY_DATASETS, TerminologyEntry } from './data/mock-terminologies';
+import { TERMINOLOGY_DATASETS, TerminologyEntry } from './data/standard-terminologies';
 import {
   OFFICIAL_SNOMED_CONCEPTS,
   SnomedConceptEntry,
@@ -1422,11 +1422,11 @@ export class ExternalTerminologiesService implements OnModuleDestroy {
     };
   }
 
-  getTerminologyCatalog(terminology: string, options: {
+  async getTerminologyCatalog(terminology: string, options: {
     page?: number | string;
     limit?: number | string;
     query?: string;
-  }): {
+  }): Promise<{
     success: boolean;
     total: number;
     page: number;
@@ -1435,21 +1435,87 @@ export class ExternalTerminologiesService implements OnModuleDestroy {
     query?: string;
     count: number;
     data: TerminologyEntry[];
-  } {
+  }> {
     const page = Math.max(1, parseInt(String(options.page || '1'), 10) || 1);
     const limit = Math.max(1, Math.min(200, parseInt(String(options.limit || '50'), 10) || 50));
     const query = (options.query || '').trim().toLowerCase();
 
-    const dataset = TERMINOLOGY_DATASETS[terminology.toLowerCase()] || [];
-    let filtered = dataset;
+    const normKey = terminology.toLowerCase();
+    const dataset = TERMINOLOGY_DATASETS[normKey] || [];
+    let filtered = [...dataset];
 
     if (query) {
       filtered = filtered.filter(d =>
         d.code.toLowerCase().includes(query) ||
         d.display.toLowerCase().includes(query) ||
         (d.category && d.category.toLowerCase().includes(query)) ||
-        (d.description && d.description.toLowerCase().includes(query))
+        (d.description && d.description.toLowerCase().includes(query)) ||
+        (d.quantity && d.quantity.toLowerCase().includes(query))
       );
+
+      // If querying medicines, enrich dynamically with live NIH NLM RxNav API
+      if (normKey === 'atc' || normKey === 'medicines') {
+        try {
+          const rxNavUrl = `https://rxnav.nlm.nih.gov/REST/drugs.json?name=${encodeURIComponent(query)}`;
+          const rxRes = await fetch(rxNavUrl, { signal: AbortSignal.timeout(3500) });
+          if (rxRes.ok) {
+            const rxData = await rxRes.json();
+            const groups = rxData.drugGroup?.conceptGroup || [];
+            const existingCodes = new Set(filtered.map(f => f.code.toLowerCase()));
+            const liveEntries: TerminologyEntry[] = [];
+
+            for (const g of groups) {
+              if (g.conceptProperties) {
+                for (const p of g.conceptProperties) {
+                  if (!existingCodes.has(p.rxcui.toLowerCase()) && !existingCodes.has(p.name.toLowerCase())) {
+                    existingCodes.add(p.rxcui.toLowerCase());
+                    existingCodes.add(p.name.toLowerCase());
+                    const qtyMatch = p.name.match(/\b(\d+(?:\.\d+)?\s*(?:mg|mcg|g|ml|units(?:\/ml)?|%|mcg\/dose|iu))\b/i);
+                    const formMatch = p.name.match(/\b(Extended-Release Oral Tablet|Delayed-Release Oral Tablet|Film-Coated Oral Tablet|Oral Tablet|Oral Capsule|Oral Suspension|Oral Solution|Metered-Dose Inhaler|Dry Powder Inhaler|Inhalation Aerosol|Subcutaneous Solution|Injection|Infusion|Topical Cream|Topical Ointment|Ophthalmic Solution|Ear Drops)\b/i);
+
+                    let doseAmount: string | undefined;
+                    let measurementUnit: string | undefined;
+                    if (qtyMatch) {
+                      const parts = qtyMatch[1].match(/^([\d.]+)\s*(.*)$/);
+                      if (parts) {
+                        doseAmount = parts[1];
+                        measurementUnit = parts[2];
+                      }
+                    }
+
+                    let route: string | undefined;
+                    if (/Oral/i.test(p.name)) route = 'Oral';
+                    else if (/Inhal/i.test(p.name)) route = 'Inhalation';
+                    else if (/Subcutaneous|Injection|Infusion/i.test(p.name)) route = 'Injectable';
+                    else if (/Topical|Cream|Ointment/i.test(p.name)) route = 'Topical';
+                    else if (/Ophthalmic|Eye/i.test(p.name)) route = 'Ophthalmic';
+
+                    liveEntries.push({
+                      code: p.rxcui,
+                      display: p.name,
+                      system: 'RxNorm / NIH NLM',
+                      category: `Prescription Drug (${g.tty || 'Clinical'})`,
+                      description: `Official Semantic Clinical Drug from NIH NLM RxNav. Strength & Formulation: ${p.name}. RxCUI: ${p.rxcui}.`,
+                      quantity: qtyMatch ? qtyMatch[1] : undefined,
+                      measurementUnit,
+                      doseAmount,
+                      dosageForm: formMatch ? formMatch[1] : undefined,
+                      route,
+                      rxNormCui: p.rxcui,
+                    });
+                  }
+                }
+              }
+            }
+
+            if (liveEntries.length > 0) {
+              filtered = [...filtered, ...liveEntries];
+            }
+          }
+        } catch (err: any) {
+          this.logger.warn(`Live RxNav drug search query failed (${err.message}). Using local clinical dataset.`);
+        }
+      }
     }
 
     const startIndex = (page - 1) * limit;
@@ -1460,7 +1526,7 @@ export class ExternalTerminologiesService implements OnModuleDestroy {
       total: filtered.length,
       page,
       limit,
-      totalPages: Math.ceil(filtered.length / limit),
+      totalPages: Math.max(1, Math.ceil(filtered.length / limit)),
       query: options.query,
       count: paginated.length,
       data: paginated,

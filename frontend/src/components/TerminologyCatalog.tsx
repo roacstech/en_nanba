@@ -33,12 +33,12 @@ const TERMINOLOGY_METADATA: Record<string, {
     docsLabel: 'UCUM Official Documentation',
   },
   atc: {
-    badge: 'WHO ATC Classification',
+    badge: 'WHO ATC & RxNorm Medicine Catalog',
     queryParam: 'metformin',
     browserUrl: 'https://www.whocc.no/atc_ddd_index/',
     browserLabel: 'WHOCC ATC/DDD Index',
-    docsUrl: 'https://www.whocc.no/atc/structure_and_principles/',
-    docsLabel: 'WHO Collaborating Centre Guidelines',
+    docsUrl: 'https://rxnav.nlm.nih.gov/',
+    docsLabel: 'NIH NLM RxNav Drug Registry',
   },
   dicom: {
     badge: 'NEMA DICOM Standard',
@@ -310,13 +310,34 @@ export const TerminologyCatalog: React.FC<TerminologyCatalogProps> = ({ terminol
         ) : (
           /* The Table */
           <div className="flex-1 overflow-x-auto">
-            <table className="w-full text-left border-collapse table-fixed min-w-[800px]">
+            <table className="w-full text-left border-collapse table-fixed min-w-[950px]">
               <thead>
                 <tr className="bg-slate-50/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800">
-                  <th className="py-2 px-4 text-[10px] font-black uppercase tracking-wider text-slate-500 w-[15%]">Code</th>
-                  <th className="py-2 px-4 text-[10px] font-black uppercase tracking-wider text-slate-500 w-[35%]">Display Term</th>
-                  <th className="py-2 px-4 text-[10px] font-black uppercase tracking-wider text-slate-500 w-[15%]">Category</th>
-                  <th className="py-2 px-4 text-[10px] font-black uppercase tracking-wider text-slate-500 w-[35%] hidden sm:table-cell">Description</th>
+                  <th className={`py-2 px-4 text-[10px] font-black uppercase tracking-wider text-slate-500 ${
+                    terminologyId === 'atc' ? 'w-[12%]' : terminologyId === 'fhir' ? 'w-[25%]' : 'w-[15%]'
+                  }`}>
+                    {terminologyId === 'atc' ? 'ATC / RxCUI' : 'Code'}
+                  </th>
+                  <th className={`py-2 px-4 text-[10px] font-black uppercase tracking-wider text-slate-500 ${
+                    terminologyId === 'atc' ? 'w-[24%]' : terminologyId === 'fhir' ? 'w-[26%]' : 'w-[27%]'
+                  }`}>
+                    {terminologyId === 'atc' ? 'Medicine Name' : 'Display Term'}
+                  </th>
+                  {terminologyId === 'atc' && (
+                    <th className="py-2 px-4 text-[10px] font-black uppercase tracking-wider text-slate-500 w-[18%]">
+                      Dosage Quantity &amp; Measurement
+                    </th>
+                  )}
+                  <th className={`py-2 px-4 text-[10px] font-black uppercase tracking-wider text-slate-500 ${
+                    terminologyId === 'atc' ? 'w-[16%]' : terminologyId === 'fhir' ? 'w-[14%]' : 'w-[18%]'
+                  }`}>
+                    Category
+                  </th>
+                  <th className={`py-2 px-4 text-[10px] font-black uppercase tracking-wider text-slate-500 ${
+                    terminologyId === 'atc' ? 'w-[30%]' : terminologyId === 'fhir' ? 'w-[35%]' : 'w-[40%]'
+                  } hidden sm:table-cell`}>
+                    {terminologyId === 'atc' ? 'Clinical Indication & Pharmacology' : 'Description'}
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -326,54 +347,118 @@ export const TerminologyCatalog: React.FC<TerminologyCatalogProps> = ({ terminol
                     <tr key={i} className="animate-pulse">
                       <td className="py-4 px-5"><div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-16"></div></td>
                       <td className="py-4 px-5"><div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-48"></div></td>
+                      {terminologyId === 'atc' && (
+                        <td className="py-4 px-5"><div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-32"></div></td>
+                      )}
                       <td className="py-4 px-5"><div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-24"></div></td>
                       <td className="py-4 px-5 hidden sm:table-cell"><div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-64"></div></td>
                     </tr>
                   ))
                 ) : (
-                  entries.map((entry) => (
-                    <tr 
-                      key={entry.code} 
-                      className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group ${isLoading ? 'opacity-50' : ''}`}
-                    >
-                      <td className="py-1.5 px-4">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs font-bold px-2 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 rounded-md border border-blue-100 dark:border-blue-800/30">
-                            {entry.code}
-                          </span>
-                          <button
-                            onClick={() => handleCopyCode(entry.code)}
-                            className="text-slate-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                            title="Copy Code"
-                          >
-                            {copiedCode === entry.code ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
-                          </button>
-                        </div>
-                      </td>
-                      <td className="py-1.5 px-4">
-                        <div className="font-bold text-sm text-slate-900 dark:text-white">
-                          {entry.display}
-                        </div>
-                        <div className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wide">
-                          {entry.system}
-                        </div>
-                      </td>
-                      <td className="py-1.5 px-4">
-                        {entry.category ? (
-                          <div className="inline-flex items-center px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-medium border border-slate-200 dark:border-slate-700">
-                            {entry.category}
+                  entries.map((entry) => {
+                    const isMedicine = terminologyId === 'atc';
+                    const qtyString = entry.quantity || entry.display.match(/\b(\d+(?:\.\d+)?\s*(?:mg|mcg|g|ml|units(?:\/ml)?|%|mcg\/dose|iu))\b/i)?.[1] || '';
+                    const qtyParts = qtyString.match(/^([\d.]+)\s*(.*)$/);
+                    const doseAmount = entry.doseAmount || (qtyParts ? qtyParts[1] : '');
+                    const measurementUnit = entry.measurementUnit || (qtyParts ? qtyParts[2] : '');
+                    const dosageForm = entry.dosageForm || entry.display.match(/\b(Extended-Release Oral Tablet|Delayed-Release Oral Tablet|Film-Coated Oral Tablet|Oral Tablet|Oral Capsule|Oral Suspension|Oral Solution|Metered-Dose Inhaler|Dry Powder Inhaler|Inhalation Aerosol|Subcutaneous Solution|Injection|Infusion|Topical Cream|Topical Ointment|Ophthalmic Solution|Ear Drops)\b/i)?.[1] || '';
+                    const route = entry.route || (dosageForm.toLowerCase().includes('oral') ? 'Oral' : dosageForm.toLowerCase().includes('inhal') ? 'Inhalation' : dosageForm.toLowerCase().includes('subcutaneous') || dosageForm.toLowerCase().includes('injection') ? 'Injectable' : dosageForm.toLowerCase().includes('topical') ? 'Topical' : dosageForm.toLowerCase().includes('ophthalmic') ? 'Ophthalmic' : '');
+
+                    return (
+                      <tr 
+                        key={`${entry.code}-${entry.display}`} 
+                        className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group ${isLoading ? 'opacity-50' : ''}`}
+                      >
+                        <td className="py-2.5 px-4 align-top">
+                          <div className="flex items-start gap-1.5 max-w-full">
+                            <span className="font-mono text-xs font-bold px-2 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 rounded-md border border-blue-100 dark:border-blue-800/30 break-all leading-normal inline-block max-w-[calc(100%-24px)]">
+                              {entry.code}
+                            </span>
+                            <button
+                              onClick={() => handleCopyCode(entry.code)}
+                              className="text-slate-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 shrink-0 mt-0.5"
+                              title="Copy Code"
+                            >
+                              {copiedCode === entry.code ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                            </button>
                           </div>
-                        ) : (
-                          <span className="text-xs text-slate-400">-</span>
+                          {entry.rxNormCui && entry.code !== entry.rxNormCui && (
+                            <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-1">
+                              RxCUI: {entry.rxNormCui}
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-4 align-top">
+                          <div className="font-bold text-sm text-slate-900 dark:text-white leading-snug break-words">
+                            {entry.display}
+                          </div>
+                          {!isMedicine && (
+                            <span className="text-[10px] text-slate-400 uppercase tracking-wider font-mono mt-1 inline-block">
+                              {entry.system}
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Dedicated Dosage Quantity & Measurement column for Medicines */}
+                        {isMedicine && (
+                          <td className="py-2.5 px-4 align-top">
+                            <div className="flex flex-col gap-1.5">
+                              {/* Quantity and Measurement Unit Badges */}
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                {doseAmount ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800/60" title="Dosage Strength / Amount">
+                                    <span className="text-blue-500 dark:text-blue-400 font-semibold mr-1">Qty:</span>
+                                    {doseAmount}
+                                  </span>
+                                ) : null}
+                                {measurementUnit ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60" title="Measurement Unit">
+                                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold mr-1">Unit:</span>
+                                    {measurementUnit}
+                                  </span>
+                                ) : null}
+                                {!doseAmount && !measurementUnit && qtyString && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                    <span className="text-slate-500 mr-1">Dose:</span>
+                                    {qtyString}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Dosage Form & Administration Route */}
+                              <div className="flex flex-wrap items-center gap-1">
+                                {dosageForm && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                    {dosageForm}
+                                  </span>
+                                )}
+                                {route && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200/70 dark:border-purple-800/50">
+                                    Route: {route}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
                         )}
-                      </td>
-                      <td className="py-3.5 px-5 hidden sm:table-cell">
-                        <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 leading-relaxed">
-                          {entry.description || '-'}
-                        </p>
-                      </td>
-                    </tr>
-                  ))
+
+                        <td className="py-2.5 px-4 align-top">
+                          {entry.category ? (
+                            <div className="inline-flex items-center px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium border border-slate-200 dark:border-slate-700 leading-snug">
+                              {entry.category}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-slate-400">-</span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-4 hidden sm:table-cell align-top">
+                          <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed break-words whitespace-normal select-text">
+                            {entry.description || '-'}
+                          </p>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>

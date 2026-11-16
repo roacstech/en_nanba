@@ -309,7 +309,7 @@ export const LoincObservationCatalog: React.FC = () => {
                         <span className="font-bold text-slate-900 dark:text-white text-xs block">
                           {item.displayName}
                         </span>
-                        <span className="text-[11px] text-slate-500 dark:text-slate-400 block line-clamp-1">
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 block leading-tight">
                           {item.longCommonName}
                         </span>
                       </div>

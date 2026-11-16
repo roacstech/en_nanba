@@ -432,6 +432,12 @@ export interface TerminologyEntry {
   system: string;
   category?: string;
   description?: string;
+  quantity?: string;
+  measurementUnit?: string;
+  doseAmount?: string;
+  dosageForm?: string;
+  route?: string;
+  rxNormCui?: string;
 }
 
 export interface TerminologyCatalogResponse {

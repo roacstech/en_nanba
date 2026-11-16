@@ -313,7 +313,7 @@ export const AnatomyReferenceCatalog: React.FC = () => {
                         <span className="font-bold text-slate-900 dark:text-white text-xs block">
                           {item.systemName}
                         </span>
-                        <span className="text-[11px] text-slate-500 dark:text-slate-400 block line-clamp-1">
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 block">
                           {item.openStaxChapters}
                         </span>
                       </div>
@@ -321,7 +321,7 @@ export const AnatomyReferenceCatalog: React.FC = () => {
 
                     {/* Educational Scope */}
                     <td className="py-3 px-4 align-top">
-                      <p className="text-slate-600 dark:text-slate-300 text-xs leading-relaxed line-clamp-2">
+                      <p className="text-slate-600 dark:text-slate-300 text-xs leading-relaxed break-words whitespace-normal">
                         {item.educationalScope}
                       </p>
                     </td>
