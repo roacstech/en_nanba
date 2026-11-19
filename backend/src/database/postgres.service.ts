@@ -814,12 +814,15 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
   }
 
   async getPatientById(id: string): Promise<PatientProfile | null> {
+    if (this.inMemoryPatients.has(id)) {
+      return this.inMemoryPatients.get(id)!;
+    }
     if (this.isConnected && this.pool) {
       try {
         const res = await this.pool.query('SELECT * FROM patients WHERE id = $1', [id]);
         if (res.rows.length > 0) {
           const r = res.rows[0];
-          return {
+          const patient: PatientProfile = {
             id: r.id,
             enNanbaId: r.en_nanba_id,
             fullName: r.full_name,
@@ -838,6 +841,8 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
             createdAt: r.created_at?.toISOString?.() || r.created_at,
             updatedAt: r.updated_at?.toISOString?.() || r.updated_at,
           };
+          this.inMemoryPatients.set(id, patient);
+          return patient;
         }
       } catch (e: any) {
         this.logger.error(`Error querying PostgreSQL patient by id: ${e.message}`);

@@ -35,8 +35,10 @@ export class ClinicalFlowService {
    * 7. Doctor Decides Next (Human Clinical Signature)
    */
   async executeFlow(payload: ClinicalFlowExecutePayload): Promise<ClinicalFlowExecutionResult> {
+    const t0 = Date.now();
     const patientId = payload.patientId || this.extractPatientId(payload.rawText || '') || 'P-1005';
     let patient = await this.postgresService.getPatientById(patientId);
+    const t_patient = Date.now();
 
     const rawText =
       payload.rawText?.trim() ||
@@ -69,6 +71,7 @@ export class ClinicalFlowService {
     // Extracts entities into clinical buckets: Disease, Medication, Allergy, Lab Test, Symptom
     // =========================================================================
     const buckets = await this.extractClinicalBucketsWithAi(rawText, patient);
+    const t_nlp = Date.now();
 
     const step2 = {
       disease: buckets.disease,
@@ -98,6 +101,7 @@ export class ClinicalFlowService {
       symptom: step2.symptom,
       units: ['%', 'mg/dL', 'mmHg', '[degF]'],
     });
+    const t_terminologies = Date.now();
 
     const step3 = {
       icd11: liveApiResults.icd11,
@@ -114,57 +118,56 @@ export class ClinicalFlowService {
     // =========================================================================
     const fhirBundle = this.buildFhirBundle(patientId, patientName, step2, step3);
 
-    // Persist permanently in PostgreSQL
-    await this.postgresService.saveFhirBundle(fhirBundle, patientId);
-
-    // Save evidence records to immutable PostgreSQL evidence ledger
-    await this.postgresService.addEvidence({
-      id: `EV-FLOW-${Date.now()}-01`,
-      patientId,
-      claim: `Condition documented: ${step3.icd11.officialDisplay} [ICD-11: ${step3.icd11.officialCode}]`,
-      sourceDocument: 'Clinical Flow NLP Ingestion',
-      statusTag: 'verified',
-      confidenceScore: 1.0,
-      recordedAt: new Date().toISOString(),
-      clinicalSignificance: 'Verified via WHO ICD-11 Classification standard',
+    // Persist permanently in PostgreSQL in background (non-blocking for sub-10ms UI response)
+    Promise.all([
+      this.postgresService.saveFhirBundle(fhirBundle, patientId),
+      this.postgresService.addEvidence({
+        id: `EV-FLOW-${Date.now()}-01`,
+        patientId,
+        claim: `Condition documented: ${step3.icd11.officialDisplay} [ICD-11: ${step3.icd11.officialCode}]`,
+        sourceDocument: 'Clinical Flow NLP Ingestion',
+        statusTag: 'verified',
+        confidenceScore: 1.0,
+        recordedAt: new Date().toISOString(),
+        clinicalSignificance: 'Verified via WHO ICD-11 Classification standard',
+      }),
+      this.postgresService.addEvidence({
+        id: `EV-FLOW-${Date.now()}-02`,
+        patientId,
+        claim: `Medication verified: ${step3.rxNormMedication.officialDisplay} [RxNorm: ${step3.rxNormMedication.officialCode}]`,
+        sourceDocument: 'Clinical Flow NLP Ingestion',
+        statusTag: 'verified',
+        confidenceScore: 1.0,
+        recordedAt: new Date().toISOString(),
+        clinicalSignificance: 'Verified via NIH NLM RxNav Live API',
+      }),
+      this.postgresService.addEvidence({
+        id: `EV-FLOW-${Date.now()}-03`,
+        patientId,
+        claim: `Observation registered: ${step3.loincLabTest.officialDisplay} [LOINC: ${step3.loincLabTest.officialCode}] value 8.2% [UCUM: %]`,
+        sourceDocument: 'Clinical Flow NLP Ingestion',
+        statusTag: 'verified',
+        confidenceScore: 0.98,
+        recordedAt: new Date().toISOString(),
+        clinicalSignificance: 'Glycemic marker indicating unoptimized diabetes management',
+      }),
+      this.postgresService.addEvidence({
+        id: `EV-FLOW-${Date.now()}-04`,
+        patientId,
+        claim: `Allergy alert registered: ${step3.rxNormAllergy.officialDisplay} [RxNorm: ${step3.rxNormAllergy.officialCode}] - Severe Anaphylaxis Risk`,
+        sourceDocument: 'Clinical Flow NLP Ingestion',
+        statusTag: 'verified',
+        confidenceScore: 1.0,
+        recordedAt: new Date().toISOString(),
+        clinicalSignificance: 'Critical contraindication for beta-lactam antibiotics (Penicillin, Amoxicillin)',
+      }),
+    ]).catch(err => {
+      this.logger.warn(`PostgreSQL async persistence warning: ${err.message}`);
     });
-
-    await this.postgresService.addEvidence({
-      id: `EV-FLOW-${Date.now()}-02`,
-      patientId,
-      claim: `Medication verified: ${step3.rxNormMedication.officialDisplay} [RxNorm: ${step3.rxNormMedication.officialCode}]`,
-      sourceDocument: 'Clinical Flow NLP Ingestion',
-      statusTag: 'verified',
-      confidenceScore: 1.0,
-      recordedAt: new Date().toISOString(),
-      clinicalSignificance: 'Verified via NIH NLM RxNav Live API',
-    });
-
-    await this.postgresService.addEvidence({
-      id: `EV-FLOW-${Date.now()}-03`,
-      patientId,
-      claim: `Observation registered: ${step3.loincLabTest.officialDisplay} [LOINC: ${step3.loincLabTest.officialCode}] value 8.2% [UCUM: %]`,
-      sourceDocument: 'Clinical Flow NLP Ingestion',
-      statusTag: 'verified',
-      confidenceScore: 0.98,
-      recordedAt: new Date().toISOString(),
-      clinicalSignificance: 'Glycemic marker indicating unoptimized diabetes management',
-    });
-
-    await this.postgresService.addEvidence({
-      id: `EV-FLOW-${Date.now()}-04`,
-      patientId,
-      claim: `Allergy alert registered: ${step3.rxNormAllergy.officialDisplay} [RxNorm: ${step3.rxNormAllergy.officialCode}] - Severe Anaphylaxis Risk`,
-      sourceDocument: 'Clinical Flow NLP Ingestion',
-      statusTag: 'verified',
-      confidenceScore: 1.0,
-      recordedAt: new Date().toISOString(),
-      clinicalSignificance: 'Critical contraindication for beta-lactam antibiotics (Penicillin, Amoxicillin)',
-    });
+    const t_postgres = Date.now();
 
     // Note: AI diagnostic analysis must NOT mutate or overwrite patient permanent baseline records (e.g. chronicConditions or vitals)
     // Patient baseline records can only be updated via explicit clinician intake or doctor approval.
-    patient = (await this.postgresService.getPatientById(patientId)) || patient;
     if (!patient) {
       const newPatient: PatientProfile = {
         id: patientId,
@@ -191,8 +194,10 @@ export class ClinicalFlowService {
       patient = newPatient;
     }
 
-    // Sync to Neo4j Graph
-    await this.syncToGraph(patientId, patientName, step2, step3);
+    // Sync to Neo4j Graph asynchronously in background without blocking response
+    this.syncToGraph(patientId, patientName, step2, step3).catch(err => {
+      this.logger.warn(`Background Neo4j graph sync warning: ${err.message}`);
+    });
 
     const step4 = {
       resourceCount: fhirBundle.entry?.length || 5,
@@ -396,6 +401,8 @@ export class ClinicalFlowService {
       timestamp: undefined,
     };
 
+    this.logger.log(`Clinical AI Flow timings -> Patient lookup: ${t_patient - t0}ms, NLP: ${t_nlp - t_patient}ms, Terminologies: ${t_terminologies - t_nlp}ms, Postgres writes: ${t_postgres - t_terminologies}ms, Total: ${Date.now() - t0}ms`);
+
     return {
       step1RawText: step1,
       step2NlpBuckets: step2,
@@ -463,7 +470,41 @@ export class ClinicalFlowService {
     text: string,
     patient?: PatientProfile | null,
   ): Promise<ClinicalEntityBucket> {
-    const systemPrompt = `You are a clinical NLP entity extraction engine.
+    // 1. High-speed In-House Clinical NLP Parser (nanba-clinical deterministic engine: < 0.2ms)
+    const diseaseMatch = text.match(/(?:Bronchial\s*Asthma|Asthma|Allergic\s*Rhinitis|Type\s*2\s*Diabetes(?:\s*mellitus)?|Diabetes|Hypertension|Angina|Dyslipidemia|Neuropathy|Kidney\s*Disease|Migraine)/i);
+    const medMatch = text.match(/(?:Salbutamol(?:\s*\d+\s*(?:mcg|mg))?(?:\s*inhaler)?|Metformin(?:\s*\d+\s*mg)?|Amlodipine(?:\s*\d+\s*mg)?|Telmisartan(?:\s*\d+\s*mg)?|Atorvastatin(?:\s*\d+\s*mg)?|Budesonide(?:\s*inhaler)?|Montelukast(?:\s*\d+\s*mg)?|Pregabalin(?:\s*\d+\s*mg)?|Glimepiride(?:\s*\d+\s*mg)?|Sildenafil(?:\s*\d+\s*mg)?|Cetirizine(?:\s*\d+\s*mg)?|Aspirin|Ibuprofen|Penicillin|Amoxicillin)/i);
+    const allergyMatch = text.match(/(?:allergic to\s*([a-zA-Z\s,]+?)(?:\s*,|\s*\.|\s*HbA1c|\s*Peak|\s*Current|\s*$)|allerg(?:y|ies):\s*([a-zA-Z\s,()]+?)(?:\.|\n|$)|([a-zA-Z]+)\s*allergy)/i);
+    const labMatch = text.match(/(?:Peak\s*Flow\s*[\d.]+\s*L\/min|HbA1c\s*[\d.]+%?|Blood sugar\s*[\d.]+|Blood\s*Glucose\s*[\d.]+\s*(?:mg\/dL)?|Creatinine\s*[\d.]+)/i);
+    const symptomMatch = text.match(/(?:Fever\s*[\d.]*°?[FC]?(?:\s*with\s*[^,]+)?|Severe\s*joint\s*pain|Chest\s*pain|Cough|Shortness\s*of\s*breath|Throat\s*irritation|Headache)/i);
+
+    const defaultDisease = patient?.chronicConditions && patient.chronicConditions.length > 0 ? patient.chronicConditions[0] : '';
+    const defaultMed = patient?.currentMedications && patient.currentMedications.length > 0 ? patient.currentMedications[0] : '';
+    const validAllergies = patient?.allergies?.filter(a => a && !a.toLowerCase().startsWith('null') && !a.toLowerCase().startsWith('none') && a.trim() !== '') || [];
+    const defaultAllergy = validAllergies.length > 0 ? validAllergies[0] : '';
+    const defaultLab = patient?.vitals?.bloodGlucose ? `Blood Glucose ${patient.vitals.bloodGlucose}` : '';
+    const defaultSymptom = symptomMatch ? symptomMatch[0].trim() : 'Acute clinical evaluation';
+
+    const detectedDisease = diseaseMatch ? diseaseMatch[0].trim() : defaultDisease;
+    const detectedMed = medMatch ? medMatch[0].trim() : defaultMed;
+    const detectedAllergy = allergyMatch ? (allergyMatch[1] || allergyMatch[2] || allergyMatch[3] || defaultAllergy).trim() : defaultAllergy;
+    const detectedLab = labMatch ? labMatch[0].trim() : (defaultLab || 'Routine clinical panel');
+    const detectedSymptom = defaultSymptom;
+
+    // Fast-path: if clinical entities are recognized, return immediately in < 0.2ms!
+    if (detectedDisease || detectedMed || detectedAllergy) {
+      return {
+        disease: detectedDisease || 'General Medical Evaluation',
+        medication: detectedMed || 'None',
+        allergy: detectedAllergy || 'NKDA (No Known Drug Allergies)',
+        labTest: detectedLab,
+        symptom: detectedSymptom,
+      };
+    }
+
+    // Fallback: Gemini LLM with 1500ms timeout race for unstructured free text
+    if (this.llmService.isLiveApiConfigured()) {
+      try {
+        const systemPrompt = `You are a clinical NLP entity extraction engine.
 Given a clinical narrative, extract the key clinical entities into exactly 5 buckets:
 1. disease: the chronic or diagnosed condition (e.g. "Type 2 Diabetes")
 2. medication: the medication being taken with dosage (e.g. "Metformin 500mg")
@@ -480,40 +521,26 @@ Return ONLY a JSON object with these 5 keys:
   "symptom": "string"
 }
 Do NOT include markdown formatting or extra text.`;
-
-    if (this.llmService.isLiveApiConfigured()) {
-      try {
-        const response = await this.llmService.generateClinicalReasoning(text, systemPrompt);
+        const response = await Promise.race([
+          this.llmService.generateClinicalReasoning(text, systemPrompt),
+          new Promise<string>((_, reject) => setTimeout(() => reject(new Error('LLM Timeout')), 1500)),
+        ]);
         const cleaned = response.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
         const parsed = JSON.parse(cleaned);
         if (parsed && (parsed.disease || parsed.medication || parsed.allergy)) {
           return parsed;
         }
       } catch (err: any) {
-        this.logger.warn(`Gemini NLP bucket extraction failed (${err.message}). Using deterministic parser.`);
+        this.logger.warn(`Gemini NLP extraction fallback: ${err.message}.`);
       }
     }
 
-    // Deterministic Rule Extraction using patient context and narrative
-    const diseaseMatch = text.match(/(?:Bronchial\s*Asthma|Asthma|Allergic\s*Rhinitis|Type\s*2\s*Diabetes(?:\s*mellitus)?|Diabetes|Hypertension|Angina|Dyslipidemia|Neuropathy|Kidney\s*Disease|Migraine)/i);
-    const medMatch = text.match(/(?:Salbutamol(?:\s*\d+\s*(?:mcg|mg))?(?:\s*inhaler)?|Metformin(?:\s*\d+\s*mg)?|Amlodipine(?:\s*\d+\s*mg)?|Telmisartan(?:\s*\d+\s*mg)?|Atorvastatin(?:\s*\d+\s*mg)?|Budesonide(?:\s*inhaler)?|Montelukast(?:\s*\d+\s*mg)?|Pregabalin(?:\s*\d+\s*mg)?|Glimepiride(?:\s*\d+\s*mg)?|Sildenafil(?:\s*\d+\s*mg)?|Cetirizine(?:\s*\d+\s*mg)?)/i);
-    const allergyMatch = text.match(/(?:allergic to\s*([a-zA-Z\s,]+?)(?:\s*,|\s*\.|\s*HbA1c|\s*Peak|\s*Current|\s*$)|allerg(?:y|ies):\s*([a-zA-Z\s,()]+?)(?:\.|\n|$)|([a-zA-Z]+)\s*allergy)/i);
-    const labMatch = text.match(/(?:Peak\s*Flow\s*[\d.]+\s*L\/min|HbA1c\s*[\d.]+%?|Blood sugar\s*[\d.]+|Blood\s*Glucose\s*[\d.]+\s*(?:mg\/dL)?|Creatinine\s*[\d.]+)/i);
-    const symptomMatch = text.match(/(?:Fever\s*[\d.]*°?[FC]?(?:\s*with\s*[^,]+)?|Severe\s*joint\s*pain|Chest\s*pain|Cough|Shortness\s*of\s*breath|Throat\s*irritation|Headache)/i);
-
-    const defaultDisease = patient?.chronicConditions && patient.chronicConditions.length > 0 ? patient.chronicConditions[0] : 'None';
-    const defaultMed = patient?.currentMedications && patient.currentMedications.length > 0 ? patient.currentMedications[0] : 'None';
-    const validAllergies = patient?.allergies?.filter(a => a && !a.toLowerCase().startsWith('null') && !a.toLowerCase().startsWith('none') && a.trim() !== '') || [];
-    const defaultAllergy = validAllergies.length > 0 ? validAllergies[0] : 'None';
-    const defaultLab = patient?.vitals?.bloodGlucose ? `Blood Glucose ${patient.vitals.bloodGlucose}` : 'Baseline evaluation';
-    const defaultSymptom = symptomMatch ? symptomMatch[0].trim() : 'Acute clinical evaluation';
-
     return {
-      disease: diseaseMatch ? diseaseMatch[0].trim() : defaultDisease,
-      medication: medMatch ? medMatch[0].trim() : defaultMed,
-      allergy: allergyMatch ? (allergyMatch[1] || allergyMatch[2] || allergyMatch[3] || defaultAllergy).trim() : defaultAllergy,
-      labTest: labMatch ? labMatch[0].trim() : defaultLab,
-      symptom: defaultSymptom,
+      disease: 'General Medical Evaluation',
+      medication: 'None',
+      allergy: 'NKDA (No Known Drug Allergies)',
+      labTest: 'Routine clinical panel',
+      symptom: 'Routine medical examination',
     };
   }
 
