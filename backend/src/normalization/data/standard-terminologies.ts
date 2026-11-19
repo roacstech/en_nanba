@@ -10,6 +10,7 @@ export interface TerminologyEntry {
   dosageForm?: string;
   route?: string;
   rxNormCui?: string;
+  sideEffects?: string;
 }
 
 import { OFFICIAL_SNOMED_CONCEPTS } from './snomed-concepts.data';
@@ -58,6 +59,7 @@ export const CLINICAL_ATC: TerminologyEntry[] = CLINICAL_ATC_DATA.map(a => ({
   dosageForm: a.dosageForm,
   route: a.route,
   rxNormCui: a.rxNormCui,
+  sideEffects: a.sideEffects,
 }));
 
 export const CLINICAL_DICOM: TerminologyEntry[] = CLINICAL_DICOM_DATA.map(d => ({

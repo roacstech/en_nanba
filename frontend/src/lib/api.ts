@@ -438,6 +438,7 @@ export interface TerminologyEntry {
   dosageForm?: string;
   route?: string;
   rxNormCui?: string;
+  sideEffects?: string;
 }
 
 export interface TerminologyCatalogResponse {

@@ -13,6 +13,7 @@ import {
   RefreshCw,
   Database,
   ExternalLink,
+  AlertTriangle,
 } from 'lucide-react';
 import { api, API_BASE, TerminologyEntry, TerminologyCatalogResponse } from '../lib/api';
 
@@ -33,12 +34,12 @@ const TERMINOLOGY_METADATA: Record<string, {
     docsLabel: 'UCUM Official Documentation',
   },
   atc: {
-    badge: 'WHO ATC & RxNorm Medicine Catalog',
+    badge: 'WHO ATC, openFDA & RxNorm Live Drug Registry',
     queryParam: 'metformin',
     browserUrl: 'https://www.whocc.no/atc_ddd_index/',
     browserLabel: 'WHOCC ATC/DDD Index',
-    docsUrl: 'https://rxnav.nlm.nih.gov/',
-    docsLabel: 'NIH NLM RxNav Drug Registry',
+    docsUrl: 'https://open.fda.gov/apis/drug/',
+    docsLabel: 'openFDA Drug & Adverse Events API',
   },
   dicom: {
     badge: 'NEMA DICOM Standard',
@@ -57,12 +58,12 @@ const TERMINOLOGY_METADATA: Record<string, {
     docsLabel: 'FHIR Resource Index',
   },
   procedures: {
-    badge: 'WHO ICHI / Interventions',
+    badge: 'WHO ICHI & SNOMED CT Procedures',
     queryParam: 'biopsy',
     browserUrl: 'https://www.who.int/standards/classifications/international-classification-of-health-interventions',
     browserLabel: 'WHO ICHI Platform',
-    docsUrl: 'https://mitel.dimi.uniud.it/ichi/',
-    docsLabel: 'WHO-FIC ICHI Browser',
+    docsUrl: 'https://browser.ihtsdotools.org',
+    docsLabel: 'SNOMED CT Procedure Browser',
   },
 };
 
@@ -256,6 +257,7 @@ export const TerminologyCatalog: React.FC<TerminologyCatalogProps> = ({ terminol
               setPage(1);
             }}
           >
+            <option value={25}>25 / page</option>
             <option value={50}>50 / page</option>
             <option value={100}>100 / page</option>
             <option value={200}>200 / page</option>
@@ -278,7 +280,7 @@ export const TerminologyCatalog: React.FC<TerminologyCatalogProps> = ({ terminol
           </div>
           
           <div className="text-xs font-medium text-slate-500">
-            Showing {Math.min(limit, total)} entries on page {page}
+            Showing <strong className="text-slate-900 dark:text-white">{total > 0 ? `${(page - 1) * limit + 1}–${Math.min(page * limit, total)}` : 0}</strong> of <strong className="text-slate-900 dark:text-white">{total.toLocaleString()}</strong> entries (Page {page} of {totalPages})
           </div>
         </div>
 
@@ -310,34 +312,41 @@ export const TerminologyCatalog: React.FC<TerminologyCatalogProps> = ({ terminol
         ) : (
           /* The Table */
           <div className="flex-1 overflow-x-auto">
-            <table className="w-full text-left border-collapse table-fixed min-w-[950px]">
+            <table className="w-full text-left border-collapse table-fixed min-w-[980px]">
               <thead>
                 <tr className="bg-slate-50/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800">
                   <th className={`py-2 px-4 text-[10px] font-black uppercase tracking-wider text-slate-500 ${
-                    terminologyId === 'atc' ? 'w-[12%]' : terminologyId === 'fhir' ? 'w-[25%]' : 'w-[15%]'
+                    terminologyId === 'atc' ? 'w-[11%]' : terminologyId === 'fhir' ? 'w-[25%]' : 'w-[15%]'
                   }`}>
                     {terminologyId === 'atc' ? 'ATC / RxCUI' : 'Code'}
                   </th>
                   <th className={`py-2 px-4 text-[10px] font-black uppercase tracking-wider text-slate-500 ${
-                    terminologyId === 'atc' ? 'w-[24%]' : terminologyId === 'fhir' ? 'w-[26%]' : 'w-[27%]'
+                    terminologyId === 'atc' ? 'w-[21%]' : terminologyId === 'fhir' ? 'w-[26%]' : 'w-[27%]'
                   }`}>
-                    {terminologyId === 'atc' ? 'Medicine Name' : 'Display Term'}
+                    {terminologyId === 'atc' ? 'Medicine Name & Category' : 'Display Term'}
                   </th>
                   {terminologyId === 'atc' && (
-                    <th className="py-2 px-4 text-[10px] font-black uppercase tracking-wider text-slate-500 w-[18%]">
+                    <th className="py-2 px-4 text-[10px] font-black uppercase tracking-wider text-slate-500 w-[16%]">
                       Dosage Quantity &amp; Measurement
                     </th>
                   )}
+                  {terminologyId !== 'atc' && (
+                    <th className={`py-2 px-4 text-[10px] font-black uppercase tracking-wider text-slate-500 ${
+                      terminologyId === 'fhir' ? 'w-[14%]' : 'w-[18%]'
+                    }`}>
+                      Category
+                    </th>
+                  )}
                   <th className={`py-2 px-4 text-[10px] font-black uppercase tracking-wider text-slate-500 ${
-                    terminologyId === 'atc' ? 'w-[16%]' : terminologyId === 'fhir' ? 'w-[14%]' : 'w-[18%]'
-                  }`}>
-                    Category
-                  </th>
-                  <th className={`py-2 px-4 text-[10px] font-black uppercase tracking-wider text-slate-500 ${
-                    terminologyId === 'atc' ? 'w-[30%]' : terminologyId === 'fhir' ? 'w-[35%]' : 'w-[40%]'
+                    terminologyId === 'atc' ? 'w-[26%]' : terminologyId === 'fhir' ? 'w-[35%]' : 'w-[40%]'
                   } hidden sm:table-cell`}>
                     {terminologyId === 'atc' ? 'Clinical Indication & Pharmacology' : 'Description'}
                   </th>
+                  {terminologyId === 'atc' && (
+                    <th className="py-2 px-4 text-[10px] font-black uppercase tracking-wider text-slate-500 w-[26%] hidden sm:table-cell">
+                      Side Effects &amp; Adverse Reactions
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -350,8 +359,13 @@ export const TerminologyCatalog: React.FC<TerminologyCatalogProps> = ({ terminol
                       {terminologyId === 'atc' && (
                         <td className="py-4 px-5"><div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-32"></div></td>
                       )}
-                      <td className="py-4 px-5"><div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-24"></div></td>
+                      {terminologyId !== 'atc' && (
+                        <td className="py-4 px-5"><div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-24"></div></td>
+                      )}
                       <td className="py-4 px-5 hidden sm:table-cell"><div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-64"></div></td>
+                      {terminologyId === 'atc' && (
+                        <td className="py-4 px-5 hidden sm:table-cell"><div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-64"></div></td>
+                      )}
                     </tr>
                   ))
                 ) : (
@@ -361,7 +375,7 @@ export const TerminologyCatalog: React.FC<TerminologyCatalogProps> = ({ terminol
                     const qtyParts = qtyString.match(/^([\d.]+)\s*(.*)$/);
                     const doseAmount = entry.doseAmount || (qtyParts ? qtyParts[1] : '');
                     const measurementUnit = entry.measurementUnit || (qtyParts ? qtyParts[2] : '');
-                    const dosageForm = entry.dosageForm || entry.display.match(/\b(Extended-Release Oral Tablet|Delayed-Release Oral Tablet|Film-Coated Oral Tablet|Oral Tablet|Oral Capsule|Oral Suspension|Oral Solution|Metered-Dose Inhaler|Dry Powder Inhaler|Inhalation Aerosol|Subcutaneous Solution|Injection|Infusion|Topical Cream|Topical Ointment|Ophthalmic Solution|Ear Drops)\b/i)?.[1] || '';
+                    const dosageForm = entry.dosageForm || entry.display.match(/\b(Extended-Release Oral Tablet|Delayed-Release Oral Tablet|Film-Coated Oral Tablet|Oral Tablet|Tablet|Oral Capsule|Capsule|Oral Suspension|Oral Solution|Metered-Dose Inhaler|Dry Powder Inhaler|Inhalation Aerosol|Subcutaneous Solution|Injection|Infusion|Topical Cream|Topical Ointment|Ophthalmic Solution|Ear Drops)\b/i)?.[1] || '';
                     const route = entry.route || (dosageForm.toLowerCase().includes('oral') ? 'Oral' : dosageForm.toLowerCase().includes('inhal') ? 'Inhalation' : dosageForm.toLowerCase().includes('subcutaneous') || dosageForm.toLowerCase().includes('injection') ? 'Injectable' : dosageForm.toLowerCase().includes('topical') ? 'Topical' : dosageForm.toLowerCase().includes('ophthalmic') ? 'Ophthalmic' : '');
 
                     return (
@@ -392,11 +406,16 @@ export const TerminologyCatalog: React.FC<TerminologyCatalogProps> = ({ terminol
                           <div className="font-bold text-sm text-slate-900 dark:text-white leading-snug break-words">
                             {entry.display}
                           </div>
-                          {!isMedicine && (
-                            <span className="text-[10px] text-slate-400 uppercase tracking-wider font-mono mt-1 inline-block">
-                              {entry.system}
-                            </span>
+                          {isMedicine && entry.category && (
+                            <div className="mt-1">
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 leading-tight">
+                                {entry.category}
+                              </span>
+                            </div>
                           )}
+                          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-mono mt-1 inline-block">
+                            {entry.system}
+                          </span>
                         </td>
 
                         {/* Dedicated Dosage Quantity & Measurement column for Medicines */}
@@ -442,20 +461,38 @@ export const TerminologyCatalog: React.FC<TerminologyCatalogProps> = ({ terminol
                           </td>
                         )}
 
-                        <td className="py-2.5 px-4 align-top">
-                          {entry.category ? (
-                            <div className="inline-flex items-center px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium border border-slate-200 dark:border-slate-700 leading-snug">
-                              {entry.category}
-                            </div>
-                          ) : (
-                            <span className="text-xs text-slate-400">-</span>
-                          )}
-                        </td>
+                        {!isMedicine && (
+                          <td className="py-2.5 px-4 align-top">
+                            {entry.category ? (
+                              <div className="inline-flex items-center px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium border border-slate-200 dark:border-slate-700 leading-snug">
+                                {entry.category}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-slate-400">-</span>
+                            )}
+                          </td>
+                        )}
+
                         <td className="py-2.5 px-4 hidden sm:table-cell align-top">
                           <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed break-words whitespace-normal select-text">
                             {entry.description || '-'}
                           </p>
                         </td>
+
+                        {/* Dedicated Side Effects & Adverse Reactions column for Medicines */}
+                        {isMedicine && (
+                          <td className="py-2.5 px-4 hidden sm:table-cell align-top">
+                            <div className="flex flex-col gap-1 p-2 rounded-lg bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/50">
+                              <div className="flex items-center gap-1.5 text-[10px] font-bold text-amber-800 dark:text-amber-300">
+                                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                                <span>Reported Side Effects:</span>
+                              </div>
+                              <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed whitespace-normal break-words select-text">
+                                {entry.sideEffects || 'Consult official FDA package insert for comprehensive adverse reactions profile.'}
+                              </p>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     );
                   })
